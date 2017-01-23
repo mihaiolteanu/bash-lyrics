@@ -106,6 +106,22 @@ get-dl-lyrics() {
     echo $lyrics
 }
 
+# Get lyrics from songlyrics.com
+get-sl-lyrics() {
+    local artist=${1// /-}
+    local title=${2// /-}
+    local source="http://www.songlyrics.com/%s/%s-lyrics/"
+    local request=$(printf $source $artist $title)
+    local lyrics=$(curl -s $request | hxnormalize -x | \
+                   hxselect -c 'p.songLyricsV14' |     \
+                   # Remove all tags and leading spaces.
+                   sed -e 's/<[^>]*>//g' | sed -e 's/^[[:space:]]*//')
+    if [[ $lyrics =~ "Sorry, we have no" ]]; then
+        lyrics=""
+    fi
+    echo $lyrics
+}
+
 get-lyrics() {
     local artist=$1
     local title=$2
