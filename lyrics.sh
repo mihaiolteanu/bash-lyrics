@@ -24,7 +24,8 @@ get-title() {
 
 # URL queries can't contain spaces.
 prepare-for-query() {
-    echo $1 | sed "s/ /+/g"
+    local result=$(echo $1 | sed "s/ /+/g")
+    echo ${result:l}            # lowercase
 }
 
 # Location of the lyrics in the db for this artist and song.
@@ -83,7 +84,26 @@ get-mp-lyrics() {
 get-dl-lyrics() {
     local artist=$1
     local title=$2
-    echo ""
+    local raw_title=${title//+/ }
+    local base="http://www.darklyrics.com/"
+    local general=$base"%s/%s.html" # Page with all artist albums.
+    local final=$base"lyrics/%s/%s.html" # Page with one album and lyrics links.
+    local request=""
+    local lyrics=""
+    # Darklyrics remove the spaces from artist/song query string completly.
+    artist=${artist//+/}
+    title=${title//+/}
+    request=$(printf $general ${artist:0:1} $artist)
+    artist_resp=$(curl -sH "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.89 Safari/537.36" $request)
+    album=$(echo $artist_resp | grep "href" | grep -i $raw_title | head -n1 | hxwls)
+    if [[ ! -z "${album// }" ]]; then
+        album=${$(basename $album):r}
+        request=$(printf $final $artist $album)
+        lyrics_resp=$(curl -sH "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.89 Safari/537.36" $request)
+        awk_filter=$(printf 'BEGIN{IGNORECASE=1}/h3..*%s/{f=1;next}/h3/{f=0}f' $raw_title)
+        lyrics=$(echo $lyrics_resp | awk $awk_filter | sed -e 's/<[^>]*>//g')
+    fi
+    echo $lyrics
 }
 
 get-lyrics() {
@@ -92,10 +112,7 @@ get-lyrics() {
     # Try multiple sources, pick the first that returns a result or
     # fail in agony. (command subtitution removes newline chars,
     # quoting the whole thing prevents it)
-    local lyrics="${$(get-db-lyrics $artist $title):- \
-                  ${$(get-mp-lyrics $artist $title):- \
-                  ${$(get-dl-lyrics $artist $title):-
-                  ""}}}"
+    local lyrics="${$(get-db-lyrics $artist $title):-${$(get-mp-lyrics $artist $title):-${$(get-dl-lyrics $artist $title):-""}}}"
     if [[ ! -z "${lyrics// }" ]]; then
         save-lyrics-db $artist $title $lyrics
     fi
@@ -114,3 +131,4 @@ main() {
 }
 
 main
+#get-dl-lyrics $1 $2
