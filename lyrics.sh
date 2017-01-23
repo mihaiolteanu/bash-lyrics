@@ -80,32 +80,6 @@ get-mp-lyrics() {
     echo $lyrics
 }
 
-# Get lyrics from darklyrics.
-get-dl-lyrics() {
-    local artist=$1
-    local title=$2
-    local raw_title=${title//+/ }
-    local base="http://www.darklyrics.com/"
-    local general=$base"%s/%s.html" # Page with all artist albums.
-    local final=$base"lyrics/%s/%s.html" # Page with one album and lyrics links.
-    local request=""
-    local lyrics=""
-    # Darklyrics remove the spaces from artist/song query string completly.
-    artist=${artist//+/}
-    title=${title//+/}
-    request=$(printf $general ${artist:0:1} $artist)
-    artist_resp=$(curl -sH "User-Agent: Mozilla/5.0" $request)
-    album=$(echo $artist_resp | grep "href" | grep -i $raw_title | head -n1 | hxwls)
-    if [[ ! -z "${album// }" ]]; then
-        album=${$(basename $album):r}
-        request=$(printf $final $artist $album)
-        lyrics_resp=$(curl -sH "User-Agent: Mozilla/5.0" $request)
-        awk_filter=$(printf 'BEGIN{IGNORECASE=1}/h3..*%s/{f=1;next}/h3/{f=0}f' $raw_title)
-        lyrics=$(echo $lyrics_resp | awk $awk_filter | sed -e 's/<[^>]*>//g')
-    fi
-    echo $lyrics
-}
-
 # Get lyrics from songlyrics.com
 get-sl-lyrics() {
     local artist=${1// /-}
