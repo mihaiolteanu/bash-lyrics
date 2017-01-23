@@ -94,12 +94,12 @@ get-dl-lyrics() {
     artist=${artist//+/}
     title=${title//+/}
     request=$(printf $general ${artist:0:1} $artist)
-    artist_resp=$(curl -sH "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.89 Safari/537.36" $request)
+    artist_resp=$(curl -sH "User-Agent: Mozilla/5.0" $request)
     album=$(echo $artist_resp | grep "href" | grep -i $raw_title | head -n1 | hxwls)
     if [[ ! -z "${album// }" ]]; then
         album=${$(basename $album):r}
         request=$(printf $final $artist $album)
-        lyrics_resp=$(curl -sH "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.89 Safari/537.36" $request)
+        lyrics_resp=$(curl -sH "User-Agent: Mozilla/5.0" $request)
         awk_filter=$(printf 'BEGIN{IGNORECASE=1}/h3..*%s/{f=1;next}/h3/{f=0}f' $raw_title)
         lyrics=$(echo $lyrics_resp | awk $awk_filter | sed -e 's/<[^>]*>//g')
     fi
