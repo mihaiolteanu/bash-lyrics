@@ -24,7 +24,7 @@ get-title() {
 
 # URL queries can't contain spaces.
 prepare-for-query() {
-    local result=$(echo $1 | sed "s/ /+/g")
+    local result=$(echo $1 | sed "s/ /-/g")
     echo ${result:l}            # lowercase
 }
 
@@ -43,18 +43,6 @@ get-artist-location() {
     echo $location
 }
 
-# Fetch the lyrics from the database, if they exist.
-get-db-lyrics() {
-    local artist=$1
-    local title=$2
-    local lyrics=""
-    local location=$(get-lyrics-location $artist $title)
-    if [[ -a $location ]]; then
-        lyrics=$(<$location)
-    fi
-    echo $lyrics
-}
-
 # Update the db with these lyrics, if needed.
 save-lyrics-db() {
     local artist=$1
@@ -67,13 +55,25 @@ save-lyrics-db() {
     fi        
 }
 
+# Fetch the lyrics from the database, if they exist.
+get-db-lyrics() {
+    local artist=$1
+    local title=$2
+    local lyrics=""
+    local location=$(get-lyrics-location $artist $title)
+    if [[ -a $location ]]; then
+        lyrics=$(<$location)
+    fi
+    echo $lyrics
+}
+
 # Get lyrics from makeitpersonal.
 get-mp-lyrics() {
     local artist=$1
     local title=$2
-    local source="https://makeitpersonal.co/lyrics?artist=%s&title=%s"
-    local request=$(printf $source $artist $title)
-    local lyrics=$(curl -s $request)
+    local template="https://makeitpersonal.co/lyrics?artist=%s&title=%s"
+    local url=$(printf $template $artist $title)
+    local lyrics=$(curl -s $url)
     if [[ $lyrics =~ "Sorry, We don't have lyrics for this song yet" ]]; then
         lyrics=""              # Bad luck this time.
     fi
@@ -82,11 +82,11 @@ get-mp-lyrics() {
 
 # Get lyrics from songlyrics.com
 get-sl-lyrics() {
-    local artist=${1// /-}
-    local title=${2// /-}
-    local source="http://www.songlyrics.com/%s/%s-lyrics/"
-    local request=$(printf $source $artist $title)
-    local lyrics=$(curl -s $request | hxnormalize -x | \
+    local artist=$1
+    local title=$2
+    local template="http://www.songlyrics.com/%s/%s-lyrics/"
+    local url=$(printf $template $artist $title)
+    local lyrics=$(curl -s $url | hxnormalize -x | \
                    hxselect -c 'p.songLyricsV14' |     \
                    # Remove all tags and leading spaces.
                    sed -e 's/<[^>]*>//g' | sed -e 's/^[[:space:]]*//')
@@ -99,10 +99,13 @@ get-sl-lyrics() {
 get-lyrics() {
     local artist=$1
     local title=$2
+    local lyrics=""
     # Try multiple sources, pick the first that returns a result or
     # fail in agony. (command subtitution removes newline chars,
     # quoting the whole thing prevents it)
-    local lyrics="${$(get-db-lyrics $artist $title):-${$(get-mp-lyrics $artist $title):-${$(get-dl-lyrics $artist $title):-""}}}"
+    lyrics=$(get-db-lyrics $artist $title)
+    lyrics="${lyrics:-$(get-mp-lyrics $artist $title)}"
+    lyrics="${lyrics:-$(get-sl-lyrics $artist $title)}"
     if [[ ! -z "${lyrics// }" ]]; then
         save-lyrics-db $artist $title $lyrics
     fi
@@ -121,4 +124,3 @@ main() {
 }
 
 main
-#get-dl-lyrics $1 $2
