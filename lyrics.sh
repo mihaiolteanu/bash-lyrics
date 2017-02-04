@@ -152,6 +152,20 @@ main() {
     fi
 }
 
+# -e "false" disables the printing of lyrics to stdout; useful if run
+# only for saving the lyrics
+# -f get the artist and song name from the file (mp3) given as argument
+# -d save the lyrics for all the mp3 files in the folder given as argument
 echo_lyrics=(e "true")
-zparseopts -K -- e:=echo_lyrics f:=from_file
-main $echo_lyrics[2] "$(get-artist $from_file[2])" "$(get-title $from_file[2])"
+zparseopts -K -- e:=echo_lyrics f:=from_file d:=from_folder
+
+if [[ ! -z $from_folder[2] ]]; then
+    count=0
+    for file in $from_folder[2]/**/*.mp3; do
+        main "false" "$(get-artist $file)" "$(get-title $file)"
+        echo $count > /tmp/lyricslog
+        count=$((count+1))
+    done
+else
+    main $echo_lyrics[2] "$(get-artist $from_file[2])" "$(get-title $from_file[2])"
+fi
