@@ -12,13 +12,38 @@ get-cmus-tag() {
     cmus-remote -Q | grep $cmus_tag | sed "s/$cmus_tag //"
 }
 
+get-artist-from-file() {
+    local file=$1
+    id3v2 -l $file | awk '/TPE1/{$1=""; $2=""; $3=""; print $0}' | xargs
+}
+
+get-title-from-file() {
+    local file=$1
+    id3v2 -l $file | awk '/TIT2/{$1=""; $2=""; $3=""; print $0}' | xargs
+}
+
+# If media file given as argument, get the artist name from there,
+# otherwise get it from cmus. Other source could be added here.
 get-artist() {
-    local artist=$(get-cmus-tag "tag artist")
+    local file=$1
+    local artist
+    if [[ ! -z $file ]]; then
+        artist=$(get-artist-from-file $file)
+    else
+        artist=$(get-cmus-tag "tag artist")
+    fi
     echo $artist
 }
 
+# Same as for get-artist.
 get-title() {
-    local title=$(get-cmus-tag "tag title")
+    local file=$1
+    local title
+    if [[ ! -z $file ]]; then
+        title=$(get-title-from-file $file)
+    else
+        title=$(get-cmus-tag "tag title")
+    fi
     echo $title
 }
 
@@ -113,14 +138,20 @@ get-lyrics() {
 }
 
 main() {
-    local raw_artist=$(get-artist)
-    local raw_title=$(get-title)
+    local echo_lyrics=$1
+    local raw_artist=$2
+    local raw_title=$3
+
     # Raw values only used for printing, for all other activities I
     # need a nice format without spaces.
     local artist=$(prepare-for-query $raw_artist)
     local title=$(prepare-for-query $raw_title)
     local lyrics=$(get-lyrics $artist $title)
-    printf "%s - %s \n %s" $raw_artist $raw_title $lyrics
+    if [[ $echo_lyrics =~ "true" ]]; then
+         printf "%s - %s \n %s" $raw_artist $raw_title $lyrics
+    fi
 }
 
-main
+echo_lyrics=(e "true")
+zparseopts -K -- e:=echo_lyrics f:=from_file
+main $echo_lyrics[2] "$(get-artist $from_file[2])" "$(get-title $from_file[2])"
