@@ -29,10 +29,11 @@ function zaw-lyrics-src-searcher-play () {
     local title=$array[-1]
     local artist=$array[-2]
     local command=$(printf "/%s %s" ${artist//-/ } ${title//-/ })
-    echo $artist "-" $title
+    echo "\n" $artist "-" $title "\n"
+    cat $filename
     cmus-remote -C $command
     cmus-remote -C "win-activate"
-    zle accept-line
+    #zle accept-line
 }
 
 zaw-register-src -n lyrics-searcher zaw-lyrics-src-searcher
