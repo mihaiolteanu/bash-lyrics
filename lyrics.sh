@@ -123,34 +123,29 @@ get-sl-lyrics() {
     echo $lyrics
 }
 
-get-lyrics() {
-    local artist=$1
-    local title=$2
-    local lyrics=""
-    # Try multiple sources, pick the first that returns a result or
-    # fail in agony. (command subtitution removes newline chars,
-    # quoting the whole thing prevents it)
-    lyrics=$(get-db-lyrics $artist $title)
-    lyrics="${lyrics:-$(get-mp-lyrics $artist $title)}"
-    lyrics="${lyrics:-$(get-sl-lyrics $artist $title)}"
-    if [[ ! -z "${lyrics// }" ]]; then
-        save-lyrics-db $artist $title $lyrics
-    fi
-    echo $lyrics
-}
-
 main() {
     local echo_lyrics=$1
     local raw_artist=$2
     local raw_title=$3
-
     # Raw values only used for printing, for all other activities I
     # need a nice format without spaces.
     local artist=$(prepare-for-query $raw_artist)
     local title=$(prepare-for-query $raw_title)
-    local lyrics=$(get-lyrics $artist $title)
+    local lyrics=$(get-db-lyrics $artist $title)
+    # Don't need to try and save the lyrics if they're already there.
+    if [[ -z $lyrics ]]; then
+        # Try multiple sources, pick the first that returns a result or
+        # fail in agony. (command subtitution removes newline chars,
+        # quoting the whole thing prevents it)
+        lyrics="${lyrics:-$(get-mp-lyrics $artist $title)}"
+        lyrics="${lyrics:-$(get-sl-lyrics $artist $title)}"
+        if [[ ! -z "${lyrics// }" ]]; then
+            save-lyrics-db $artist $title $lyrics
+        fi
+    fi
+
     if [[ $echo_lyrics =~ "true" ]]; then
-         printf "%s - %s \n %s" $raw_artist $raw_title $lyrics
+        printf "%s - %s \n %s" $raw_artist $raw_title $lyrics
     fi
 }
 
