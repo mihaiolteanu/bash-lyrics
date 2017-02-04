@@ -14,12 +14,14 @@ get-cmus-tag() {
 
 get-artist-from-file() {
     local file=$1
-    id3v2 -l $file | awk '/TPE1/{$1=""; $2=""; $3=""; print $0}' | xargs
+    local artist=$(id3v2 -l $file | awk '/TPE1/{$1=""; $2=""; $3=""; print $0}' | sed -e 's/  \+//g')
+    echo $artist
 }
 
 get-title-from-file() {
     local file=$1
-    id3v2 -l $file | awk '/TIT2/{$1=""; $2=""; $3=""; print $0}' | xargs
+    local title=$(id3v2 -l $file | awk '/TIT2/{$1=""; $2=""; $3=""; print $0}' | sed -e 's/  \+//g')
+    echo $title
 }
 
 # If media file given as argument, get the artist name from there,
