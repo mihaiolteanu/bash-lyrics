@@ -123,6 +123,31 @@ get-sl-lyrics() {
     echo $lyrics
 }
 
+# Get lyrics from metrolyrics.com
+get-ml-lyrics() {
+    local artist=$1
+    local title=$2
+    local template="http://www.metrolyrics.com/%s-lyrics-%s.html"
+    local url=$(printf $template $title $artist)
+    local lyrics=$(curl -s $url | hxnormalize -x  | \
+                   hxselect -c -s '\n\n' 'p.verse'| \
+                   sed -e 's/<[^>]*>//g' | sed -e 's/^[[:space:]]*//')
+    echo $lyrics
+}
+
+# Get lyrics from genius.com
+get-gn-lyrics() {
+    local artist=$1
+    local title=$2
+    local template="https://genius.com/%s-%s-lyrics"
+    local url=$(printf $template $artist $title)
+    local lyrics=$(curl -sL $url | hxnormalize -x  | \
+                   hxselect -ci 'lyrics.lyrics' | \
+                   sed -e 's/<[^>]*>//g' | sed -e 's/^[[:space:]]*//')
+    echo $lyrics > /tmp/lyricslog 
+    echo $lyrics
+}
+
 main() {
     local echo_lyrics=$1
     local raw_artist=$2
@@ -138,7 +163,9 @@ main() {
         # fail in agony. (command subtitution removes newline chars,
         # quoting the whole thing prevents it)
         lyrics="${lyrics:-$(get-mp-lyrics $artist $title)}"
+        lyrics="${lyrics:-$(get-ml-lyrics $artist $title)}"
         lyrics="${lyrics:-$(get-sl-lyrics $artist $title)}"
+        lyrics="${lyrics:-$(get-gn-lyrics $artist $title)}"
         if [[ ! -z "${lyrics// }" ]]; then
             save-lyrics-db $artist $title $lyrics
         fi
