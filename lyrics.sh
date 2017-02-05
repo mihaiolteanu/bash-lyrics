@@ -72,9 +72,10 @@ get-title() {
     echo $title
 }
 
-# URL queries can't contain spaces.
 prepare-for-query() {
-    local result=$(echo $1 | sed "s/ /-/g")
+    local result=$1
+    result=${result// /-}       # no spaces
+    result=${result//[.,?!]/}   # remove special chars
     echo ${result:l}            # lowercase
 }
 
