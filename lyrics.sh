@@ -14,13 +14,13 @@ get-cmus-tag() {
 
 get-artist-from-file() {
     local file=$1
-    local artist=$(id3v2 -l $file | awk '/TPE1/{$1=""; $2=""; $3=""; print $0}' | sed -e 's/  \+//g')
+    local artist=$(id3v2 -l $file | awk '/(TPE1|TP1)/{$1=""; $2=""; $3=""; print $0}' | sed -e 's/  \+//g')
     echo $artist
 }
 
 get-title-from-file() {
     local file=$1
-    local title=$(id3v2 -l $file | awk '/TIT2/{$1=""; $2=""; $3=""; print $0}' | sed -e 's/  \+//g')
+    local title=$(id3v2 -l $file | awk '/(TIT2|TT2)/{$1=""; $2=""; $3=""; print $0}' | sed -e 's/  \+//g')
     echo $title
 }
 
