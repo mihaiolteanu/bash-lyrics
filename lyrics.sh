@@ -31,8 +31,8 @@ get-file-tag() {
         id3v2 --convert $file > /dev/null
     fi
     local awk_pattern=$(printf '/%s/{$1=""; $2=""; $3=""; print $0}' $tag)
-    local result=$(id3v2 -l $file | awk $awk_pattern | sed -e 's/  \+//g')
-    echo $result
+    local result=$(id3v2 -l $file | awk $awk_pattern)
+    echo ${(z)result}
 }
 
 get-artist-from-file() {
