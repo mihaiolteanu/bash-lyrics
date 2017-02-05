@@ -22,25 +22,28 @@ get-title-from-cmus() {
     echo $title
 }
 
-get-artist-from-file() {
+get-file-tag() {
     local file=$1
+    local tag=$2
     local id3tags=$(id3v2 -l $file)
     if [[ $id3tags =~ "No ID3v2 tag" ]]; then
         # Try to convert to id3v2 tags if file only has id3v1 tags.
         id3v2 --convert $file > /dev/null
     fi
-    local artist=$(id3v2 -l $file | awk '/(TPE1|TP1)/{$1=""; $2=""; $3=""; print $0}' | sed -e 's/  \+//g')
+    local awk_pattern=$(printf '/%s/{$1=""; $2=""; $3=""; print $0}' $tag)
+    local result=$(id3v2 -l $file | awk $awk_pattern | sed -e 's/  \+//g')
+    echo $result
+}
+
+get-artist-from-file() {
+    local file=$1
+    local artist=$(get-file-tag $file "(TPE1|TP1)")
     echo $artist
 }
 
 get-title-from-file() {
     local file=$1
-    local id3tags=$(id3v2 -l $file)
-    if [[ $id3tags =~ "No ID3v2 tag" ]]; then
-        # Try to convert to id3v2 tags if file only has id3v1 tags.
-        id3v2 --convert $file > /dev/null
-    fi
-    local title=$(id3v2 -l $file | awk '/(TIT2|TT2)/{$1=""; $2=""; $3=""; print $0}' | sed -e 's/  \+//g')
+    local title=$(get-file-tag $file "(TIT2|TT2)")
     echo $title
 }
 
