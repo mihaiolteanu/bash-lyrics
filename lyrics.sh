@@ -12,6 +12,16 @@ get-cmus-tag() {
     cmus-remote -Q | grep $cmus_tag | sed "s/$cmus_tag //"
 }
 
+get-artist-from-cmus() {
+    local artist=$(get-cmus-tag "tag artist")
+    echo $artist
+}
+
+get-title-from-cmus() {
+    local title=$(get-cmus-tag "tag title")
+    echo $title
+}
+
 get-artist-from-file() {
     local file=$1
     local artist=$(id3v2 -l $file | awk '/(TPE1|TP1)/{$1=""; $2=""; $3=""; print $0}' | sed -e 's/  \+//g')
@@ -32,7 +42,7 @@ get-artist() {
     if [[ ! -z $file ]]; then
         artist=$(get-artist-from-file $file)
     else
-        artist=$(get-cmus-tag "tag artist")
+        artist=$(get-artist-from-cmus)
     fi
     echo $artist
 }
@@ -44,7 +54,7 @@ get-title() {
     if [[ ! -z $file ]]; then
         title=$(get-title-from-file $file)
     else
-        title=$(get-cmus-tag "tag title")
+        title=$(get-title-from-cmus)
     fi
     echo $title
 }
