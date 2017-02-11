@@ -118,60 +118,6 @@ get-db-lyrics() {
     echo $lyrics
 }
 
-# Get lyrics from makeitpersonal.
-get-mp-lyrics() {
-    local artist=$1
-    local title=$2
-    local template="https://makeitpersonal.co/lyrics?artist=%s&title=%s"
-    local url=$(printf $template $artist $title)
-    local lyrics=$(curl -s $url)
-    if [[ $lyrics =~ "Sorry, We don't have lyrics for this song yet" ]]; then
-        lyrics=""              # Bad luck this time.
-    fi
-    echo $lyrics
-}
-
-# Get lyrics from songlyrics.com
-get-sl-lyrics() {
-    local artist=$1
-    local title=$2
-    local template="http://www.songlyrics.com/%s/%s-lyrics/"
-    local url=$(printf $template $artist $title)
-    local lyrics=$(curl -s $url | hxnormalize -x | \
-                   hxselect -c 'p.songLyricsV14' |     \
-                   # Remove all tags and leading spaces.
-                   sed -e 's/<[^>]*>//g' | sed -e 's/^[[:space:]]*//')
-    if [[ $lyrics =~ "Sorry, we have no" ]]; then
-        lyrics=""
-    fi
-    echo $lyrics
-}
-
-# Get lyrics from metrolyrics.com
-get-ml-lyrics() {
-    local artist=$1
-    local title=$2
-    local template="http://www.metrolyrics.com/%s-lyrics-%s.html"
-    local url=$(printf $template $title $artist)
-    local lyrics=$(curl -s $url | hxnormalize -x  | \
-                   hxselect -c -s '\n\n' 'p.verse'| \
-                   sed -e 's/<[^>]*>//g' | sed -e 's/^[[:space:]]*//')
-    echo $lyrics
-}
-
-# Get lyrics from genius.com
-get-gn-lyrics() {
-    local artist=$1
-    local title=$2
-    local template="https://genius.com/%s-%s-lyrics"
-    local url=$(printf $template $artist $title)
-    local lyrics=$(curl -sL $url | hxnormalize -x  | \
-                   hxselect -ci 'lyrics.lyrics' | \
-                   sed -e 's/<[^>]*>//g' | sed -e 's/^[[:space:]]*//')
-    echo $lyrics > /tmp/lyricslog 
-    echo $lyrics
-}
-
 main() {
     local echo_lyrics=$1
     local raw_artist=$2
@@ -183,13 +129,7 @@ main() {
     local lyrics=$(get-db-lyrics $artist $title)
     # Don't need to try and save the lyrics if they're already there.
     if [[ -z $lyrics ]]; then
-        # Try multiple sources, pick the first that returns a result or
-        # fail in agony. (command subtitution removes newline chars,
-        # quoting the whole thing prevents it)
-        lyrics="${lyrics:-$(get-mp-lyrics $artist $title)}"
-        lyrics="${lyrics:-$(get-ml-lyrics $artist $title)}"
-        lyrics="${lyrics:-$(get-sl-lyrics $artist $title)}"
-        lyrics="${lyrics:-$(get-gn-lyrics $artist $title)}"
+        lyrics=$(./getlyrics.sh $artist $title)
         if [[ ! -z "${lyrics// }" ]]; then
             save-lyrics-db $artist $title $lyrics
         fi
