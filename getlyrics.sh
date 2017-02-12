@@ -160,11 +160,24 @@ main() {
             break;
         fi
     done
-    echo $lyrics
+    echo -n $lyrics
 }
 
 help() {
-    echo "this is help"
+    local help_str="Usage: $1 [-sh] artist title
+Get song lyrics from multiple, selectable sources.
+    -s Use these lyrics sources, in the order they are given. Valid sources are:
+       \"$(echo $lyrics_sources_all)\"
+       When this option is not given, all the above source are considered,
+       or, if LYRICS_SOURCES is set, consider the sources listed in this
+       variable instead
+    -h Print this help and exit
+
+Example usage:
+    Get the lyrics for some metal band that you know might find on darklyrics,
+    but for some reason you want to try some other sources first:
+$1 -s \"makeitpersonal darklyrics\" \"throes of dawn\" \"slow motion\""
+    echo $help_str
 }
 
 lyrics_sources_all=(makeitpersonal songlyrics metrolyrics genius azlyrics lyricsfreak darklyrics versuri)
@@ -176,11 +189,20 @@ while getopts ":s:h" opt; do
             LYRICS_SOURCES=("${(s/ /)OPTARG}")
             shift $((OPTIND-1))
             ;;
-        \?|h|:)                 # unknown, help or argument expected
-            help
+        \?|:)
+            help $0
+            exit 1
+            ;;
+        h)
+            help $0
+            exit 0
             ;;
     esac
 done
 
-main $@
-
+if [[ $# -eq 0 ]]; then
+    help $0
+    exit 1
+else
+    main $@
+fi
