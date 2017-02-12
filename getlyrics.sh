@@ -43,7 +43,6 @@ makeitpersonal() {
     echo $lyrics
 }
 
-# Get lyrics from songlyrics.com
 songlyrics() {
     local artist=$(pquery $1 " " "-")
     local title=$(pquery $2 " " "-")
@@ -58,7 +57,6 @@ songlyrics() {
     echo $lyrics
 }
 
-# Get lyrics from metrolyrics.com
 metrolyrics() {
     local artist=$(pquery $1 " " "-")
     local title=$(pquery $2 " " "-")
@@ -70,7 +68,6 @@ metrolyrics() {
     echo $lyrics
 }
 
-# Get lyrics from genius.com
 genius() {
     local artist=$(pquery $1 " " "-")
     local title=$(pquery $2 " " "-")
@@ -83,7 +80,7 @@ genius() {
 }
 
 azlyrics() {
-    local raw_title=$2          # use for greping
+    local raw_title=$2
     local artist=$(pquery $1 " " "")
     local title=$(pquery $2 " " "")
     local template="http://www.azlyrics.com/lyrics/%s/%s.html"
@@ -95,10 +92,9 @@ azlyrics() {
     echo $lyrics
 }
 
-
 darklyrics() {
-    local raw_title=$2          # Needed for greping on the albums page
-    local artist=$(pquery $1 " " "") # No separator in title/artist string
+    local raw_title=$2
+    local artist=$(pquery $1 " " "")
     local title=$(pquery $2 " " "")
     local lyrics=""
     local albums_template="http://www.darklyrics.com/%s/%s.html"
@@ -154,7 +150,6 @@ versuri() {
 main() {
     local lyrics=""
     for lyrics_fn in $LYRICS_SOURCES; do
-        echo $lyrics_fn > /tmp/lyricslog 
         lyrics=$($lyrics_fn $1 $2)
         if [[ ! -z $lyrics ]]; then
             break;
