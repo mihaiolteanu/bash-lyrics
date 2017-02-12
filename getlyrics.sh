@@ -130,6 +130,27 @@ lyricsfreak() {
     echo $lyrics
 }
 
+versuri() {
+    local raw_artist=$1
+    local raw_title=$2
+    local artist=$(pquery $1 " " "+")
+    local title=$(pquery $2 " " "+")
+    local main_template="http://www.versuri.ro/cat/%s.html"
+    local artist_template="http://www.versuri.ro%s"
+    local lyrics_template="http://www.versuri.ro%s"
+    local url=$(printf $main_template ${artist:0:1})
+    local suburl=$(curl -s $url | grep -i "$raw_artist" | hxwls)
+    url=$(printf $artist_template $suburl)
+    suburl=$(curl -s $url | grep -i "$raw_title" | hxwls)
+    url=$(printf $lyrics_template $suburl)
+    local lyrics=$(curl -s $url | \
+        # Skip all the div and include everything between index0f and BOTTOM-CENTER
+        awk '/div/{next}/var index0f/{f=1;next}/BOTTOM-CENTER/{print;f=0}f' | \
+        hxnormalize -x | hxselect -c 'p')
+    lyrics=$(clean_string $lyrics)
+    echo $lyrics
+}
+
 main() {
     local lyrics=""
     for lyrics_fn in $LYRICS_SOURCES; do
@@ -146,7 +167,7 @@ help() {
     echo "this is help"
 }
 
-lyrics_sources_all=(makeitpersonal songlyrics metrolyrics genius azlyrics lyricsfreak darklyrics)
+lyrics_sources_all=(makeitpersonal songlyrics metrolyrics genius azlyrics lyricsfreak darklyrics versuri)
 : ${(A)LYRICS_SOURCES:=$lyrics_sources_all}
 
 while getopts ":s:h" opt; do
