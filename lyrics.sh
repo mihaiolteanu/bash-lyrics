@@ -22,6 +22,16 @@ get-title-from-cmus() {
     echo $title
 }
 
+get-artist-from-moc() {
+    local artist=$(mocp -i 2>/dev/null | awk '/Artist/{$1=""; print substr($0,2)}')
+    echo $artist
+}
+
+get-title-from-moc() {
+    local title=$(mocp -i 2>/dev/null | awk '/SongTitle/{$1=""; print substr($0,2)}')
+    echo $title
+}
+
 get-file-tag() {
     local file=$1
     local tag=$2
