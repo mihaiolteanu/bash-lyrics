@@ -28,15 +28,17 @@ clean_string() {
     echo $clean
 }
 
-# Get lyrics from makeitpersonal.
 makeitpersonal() {
     local artist=$(pquery $1 " " "-")
     local title=$(pquery $2 " " "-")
     local template="https://makeitpersonal.co/lyrics?artist=%s&title=%s"
     local url=$(printf $template $artist $title)
     local lyrics=$(curl -s $url)
-    if [[ $lyrics =~ "Sorry, We don't have lyrics for this song yet" ]]; then
-        lyrics=""              # Bad luck this time.
+    local error_str=("Sorry, We don't have lyrics for this song yet" \
+                         "title is empty" \
+                         "artist is empty")
+    if [[ $error_str =~ $lyrics ]]; then
+        lyrics=""
     fi
     echo $lyrics
 }
