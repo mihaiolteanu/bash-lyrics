@@ -165,6 +165,10 @@ versuri() {
 
 get_lyrics() {
     local lyrics=""
+
+    for token in $LYRICS_CLEAN_TITLE_TOKENS; do
+       title=$(echo $title | sed "s/ *( *$token.*) *//")
+    done
     for lyrics_fn in $LYRICS_SOURCES; do
         lyrics=$($lyrics_fn $1 $2)
         if [[ ! -z $lyrics ]]; then
@@ -184,6 +188,10 @@ Get song lyrics from multiple, selectable sources.
        When this option is not given, all the above source are considered,
        or, if LYRICS_SOURCES is set, consider the sources listed in this
        variable instead
+    -r Raw mode. By default, clean the title name of strings like
+       \"$lyrics_clean_title_tokens_all\",
+       which increases the chance of finding the lyrics. If this option is set,
+       the song title is searched as it is given.
     -h Print this help and exit
 
 Example usage:
@@ -198,7 +206,10 @@ main () {
                         lyricsfreak darklyrics songtexte versuri)
     : ${(A)LYRICS_SOURCES:=$lyrics_sources_all}
 
-    while getopts ":s:h" opt; do
+    lyrics_clean_title_tokens_all=(demo live acoustic remix bonus)
+    : ${(A)LYRICS_CLEAN_TITLE_TOKENS:=$lyrics_clean_title_tokens_all}
+
+    while getopts ":s:rh" opt; do
         case $opt in
             s)
                 LYRICS_SOURCES=("${(s/ /)OPTARG}")
@@ -207,6 +218,10 @@ main () {
                     echo "Invalid source(s): $invalid_sources, valid sources are: \n$lyrics_sources_all"
                     exit 1
                 fi
+                shift $((OPTIND-1))
+                ;;
+            r)
+                LYRICS_CLEAN_TITLE_TOKENS=()
                 shift $((OPTIND-1))
                 ;;
             \?|:)
