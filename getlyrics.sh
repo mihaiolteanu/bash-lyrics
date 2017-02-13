@@ -163,7 +163,7 @@ versuri() {
     echo $lyrics
 }
 
-get-lyrics() {
+get_lyrics() {
     local lyrics=""
     for lyrics_fn in $LYRICS_SOURCES; do
         lyrics=$($lyrics_fn $1 $2)
@@ -175,7 +175,9 @@ get-lyrics() {
 }
 
 help() {
-    local help_str="Usage: $1 [-sh] artist title
+    local help_str="
+Usage: lyrics [-srh] artist title
+       lyrics [-srh] artist_and_title
 Get song lyrics from multiple, selectable sources.
     -s Use these lyrics sources, in the order they are given. Valid sources are:
        \"$(echo $lyrics_sources_all)\"
@@ -218,12 +220,21 @@ main () {
         esac
     done
 
-    if [[ $# -eq 0 ]]; then
+    local artist_and_title artist title lyrics
+    if [[ $# -eq 0 || $# -gt 2 ]]; then
+        echo "\e[0;31merror\033[0m: Not enough or too many arguments"
         help
         exit 1
+    elif [[ $# -eq 1 ]]; then
+        artist_and_title=(${(s.-.)1})
+        artist=$artist_and_title[1]
+        title=$artist_and_title[2]
+    elif [[ $# -eq 2 ]]; then
+        artist=$1
+        title=$2
     fi
 
-    local lyrics=$(get-lyrics $@)
+    lyrics=$(get_lyrics $artist $title)
     echo $lyrics
 }
 
