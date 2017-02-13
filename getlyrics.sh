@@ -23,8 +23,9 @@ mycurl() {
 
 clean_string() {
     local dirty=$1
-    # Remove all tags and leading spaces.
-    local clean=$(echo $dirty | sed -e 's/<[^>]*>//g' | sed -e 's/^[[:space:]]*//')
+    # Remove all tags, leading spaces and duplicate empty lines.
+    local clean=$(echo $dirty | sed -e 's/<[^>]*>//g' | \
+                  sed -e 's/^[[:space:]]*//' | cat -s)
     echo $clean
 }
 
