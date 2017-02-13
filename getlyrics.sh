@@ -127,6 +127,21 @@ lyricsfreak() {
     echo $lyrics
 }
 
+songtexte() {
+    local raw_title=$2
+    local artist=$(pquery $1 " " "+")
+    local title=$(pquery $2 " " "+")
+    local search_template="http://www.songtexte.com/search?q=%s+%s&c=songs"
+    local lyrics_template="http://www.songtexte.com/%s"
+    local url=$(printf $search_template $artist $title)
+    local suburl=$(curl -s $url | grep -i "<span>$raw_title<\/span>" | hxwls)
+    local url=$(printf $lyrics_template $suburl)
+    local lyrics=$(curl -s $url | sed 's/div id/div class/g' | \
+                   hxnormalize -x | hxselect -c 'div.lyrics')
+    lyrics=$(clean_string $lyrics)
+    echo $lyrics
+}
+
 versuri() {
     local raw_artist=$1
     local raw_title=$2
@@ -177,7 +192,8 @@ $1 -s \"makeitpersonal darklyrics\" \"throes of dawn\" \"slow motion\""
 }
 
 main () {
-    lyrics_sources_all=(makeitpersonal songlyrics metrolyrics genius azlyrics lyricsfreak darklyrics versuri)
+    lyrics_sources_all=(makeitpersonal songlyrics metrolyrics genius azlyrics
+                        lyricsfreak darklyrics songtexte versuri)
     : ${(A)LYRICS_SOURCES:=$lyrics_sources_all}
 
     while getopts ":s:h" opt; do
