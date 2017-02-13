@@ -200,6 +200,11 @@ main () {
         case $opt in
             s)
                 LYRICS_SOURCES=("${(s/ /)OPTARG}")
+                local invalid_sources=${LYRICS_SOURCES:|lyrics_sources_all}
+                if [[ ! -z $invalid_sources ]]; then
+                    echo "Invalid source(s): $invalid_sources, valid sources are: \n$lyrics_sources_all"
+                    exit 1
+                fi
                 shift $((OPTIND-1))
                 ;;
             \?|:)
