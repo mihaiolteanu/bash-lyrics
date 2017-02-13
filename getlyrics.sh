@@ -148,7 +148,7 @@ versuri() {
     echo $lyrics
 }
 
-main() {
+get-lyrics() {
     local lyrics=""
     for lyrics_fn in $LYRICS_SOURCES; do
         lyrics=$($lyrics_fn $1 $2)
@@ -176,29 +176,34 @@ $1 -s \"makeitpersonal darklyrics\" \"throes of dawn\" \"slow motion\""
     echo $help_str
 }
 
-lyrics_sources_all=(makeitpersonal songlyrics metrolyrics genius azlyrics lyricsfreak darklyrics versuri)
-: ${(A)LYRICS_SOURCES:=$lyrics_sources_all}
+main () {
+    lyrics_sources_all=(makeitpersonal songlyrics metrolyrics genius azlyrics lyricsfreak darklyrics versuri)
+    : ${(A)LYRICS_SOURCES:=$lyrics_sources_all}
 
-while getopts ":s:h" opt; do
-    case $opt in
-        s)
-            LYRICS_SOURCES=("${(s/ /)OPTARG}")
-            shift $((OPTIND-1))
-            ;;
-        \?|:)
-            help $0
-            exit 1
-            ;;
-        h)
-            help $0
-            exit 0
-            ;;
-    esac
-done
+    while getopts ":s:h" opt; do
+        case $opt in
+            s)
+                LYRICS_SOURCES=("${(s/ /)OPTARG}")
+                shift $((OPTIND-1))
+                ;;
+            \?|:)
+                help
+                exit 1
+                ;;
+            h)
+                help
+                exit 0
+                ;;
+        esac
+    done
 
-if [[ $# -eq 0 ]]; then
-    help $0
-    exit 1
-else
-    main $@
-fi
+    if [[ $# -eq 0 ]]; then
+        help
+        exit 1
+    fi
+
+    local lyrics=$(get-lyrics $@)
+    echo $lyrics
+}
+
+main $@
