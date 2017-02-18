@@ -164,13 +164,15 @@ versuri() {
 }
 
 get_lyrics() {
+    local artist=$(clean_string $1)
+    local title=$(clean_string $2)
     local lyrics=""
 
     for token in $LYRICS_CLEAN_TITLE_TOKENS; do
        title=$(echo $title | sed "s/ *( *$token.*) *//")
     done
     for lyrics_fn in $LYRICS_SOURCES; do
-        lyrics=$($lyrics_fn $1 $2)
+        lyrics=$($lyrics_fn $artist $title)
         if [[ ! -z $lyrics ]]; then
             break;
         fi
