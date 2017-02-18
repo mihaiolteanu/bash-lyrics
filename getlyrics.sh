@@ -1,195 +1,78 @@
 #!/usr/bin/env zsh
 
-# Prepare string for query.  Sites have different needs regarding the
-# string for artist and title. Some require dashes instead of spaces,
-# others require no spearator at all.
-pquery() {
-    local result=$1
-    local sep=$2
-    local rep=$3
-    result=${result//$2/$3}     # replace separators
-    result=${result//[.,?!]/}   # remove special chars
-    echo ${result:l}            # lowercase
-}
-
 mycurl() {
     local url=$1
     local user_agent="User-Agent: Mozilla/5.0 (Macintosh; \ 
         Intel Mac OS X 10_10_3) AppleWebKit/537.36 (KHTML,\
         like Gecko) Chrome/44.0.2403.89 Safari/537."
-    local resp=$(curl -sLH $user_agent $1)
-    echo $resp
+    curl -sLH $user_agent $1
 }
 
 clean_string() {
     local dirty=$1
     # Remove all tags, leading/trailing spaces and duplicate empty lines.
-    local clean=$(echo $dirty | sed -e 's/<[^>]*>//g' | \
-                      sed 's/^ *//; s/ *$//' | cat -s)
-    echo $clean
-}
-
-makeitpersonal() {
-    local artist=$(pquery $1 " " "-")
-    local title=$(pquery $2 " " "-")
-    local template="https://makeitpersonal.co/lyrics?artist=%s&title=%s"
-    local url=$(printf $template $artist $title)
-    local lyrics=$(curl -s $url)
-    local error_str=("Sorry, We don't have lyrics for this song yet" \
-                         "title is empty" \
-                         "artist is empty")
-    if [[ $error_str =~ $lyrics ]]; then
-        lyrics=""
-    fi
-    echo $lyrics
+    echo $dirty | sed -e 's/<[^>]*>//g' | \
+        sed 's/^ *//; s/ *$//' | cat -s
 }
 
 songlyrics() {
-    local artist=$(pquery $1 " " "-")
-    local title=$(pquery $2 " " "-")
-    local template="http://www.songlyrics.com/%s/%s-lyrics/"
-    local url=$(printf $template $artist $title)
-    local lyrics=$(curl -s $url | hxnormalize -x | \
-                   hxselect -c 'p.songLyricsV14')
-    if [[ $lyrics =~ "Sorry, we have no" ]]; then
-        lyrics=""
-    fi
-    lyrics=$(clean_string $lyrics)
-    echo $lyrics
+    curl -s $1 | hxnormalize -x | hxselect -c 'p.songLyricsV14'
 }
 
 metrolyrics() {
-    local artist=$(pquery $1 " " "-")
-    local title=$(pquery $2 " " "-")
-    local template="http://www.metrolyrics.com/%s-lyrics-%s.html"
-    local url=$(printf $template $title $artist)
-    local lyrics=$(curl -s $url | hxnormalize -x  | \
-                   hxselect -c -s '\n\n' 'p.verse')
-    lyrics=$(clean_string $lyrics)
-    echo $lyrics
+    curl -s $1 | hxnormalize -x | hxselect -c -s '\n\n' 'p.verse'
 }
 
 genius() {
-    local artist=$(pquery $1 " " "-")
-    local title=$(pquery $2 " " "-")
-    local template="https://genius.com/%s-%s-lyrics"
-    local url=$(printf $template $artist $title)
-    local lyrics=$(curl -sL $url | hxnormalize -x  | \
-                   hxselect -ci 'lyrics.lyrics')
-    lyrics=$(clean_string $lyrics)
-    echo $lyrics
+    curl -sL $1 | hxnormalize -x | hxselect -c 'lyrics.lyrics'
 }
 
 azlyrics() {
-    local raw_title=$2
-    local artist=$(pquery $1 " " "")
-    local title=$(pquery $2 " " "")
-    local template="http://www.azlyrics.com/lyrics/%s/%s.html"
-    local url=$(printf $template $artist $title)
-    local awk_filter=$(printf 'BEGIN{IGNORECASE=1}/<b>"%s"/{f=1}/<\/div>/{print;f=0}f' $raw_title)
-    local lyrics=$(mycurl $url | hxnormalize -x | \
-                   awk $awk_filter | hxnormalize -x | hxselect -c 'div')
-    lyrics=$(clean_string $lyrics)
-    echo $lyrics
-}
-
-darklyrics() {
-    local raw_title=$2
-    local artist=$(pquery $1 " " "")
-    local title=$(pquery $2 " " "")
-    local lyrics=""
-    local albums_template="http://www.darklyrics.com/%s/%s.html"
-    local lyrics_template="http://www.darklyrics.com/lyrics/%s/%s.html"
-    local url=$(printf $albums_template ${artist:0:1} $artist)
-    local album=$(mycurl $url | grep "href" | grep -i "$raw_title" | head -n1 | hxwls)
-    if [[ ! -z "${album// }" ]]; then
-        album=${$(basename $album):r}
-        url=$(printf $lyrics_template $artist $album)
-        awk_filter=$(printf 'BEGIN{IGNORECASE=1}/h3..*%s/{f=1;next}/h3/{f=0}f' $raw_title)                
-        lyrics=$(mycurl $url | awk $awk_filter)
-    fi
-    lyrics=$(clean_string $lyrics)
-    echo $lyrics
+    mycurl $1 | awk '/Usage of azlyrics.com/{f=1; next}/<!--/{f=0}f==1'
 }
 
 lyricsfreak() {
-    local raw_title=$2
-    local artist=$(pquery $1 " " "+")
-    local title=$(pquery $2 " " "+")
-    local artist_template="http://www.lyricsfreak.com/%s/%s/"
-    local lyrics_template="http://www.lyricsfreak.com/%s"
-    local url=$(printf $artist_template ${artist:0:1} $artist)
-    local suburl=$(mycurl $url | grep -i "$raw_title" | hxwls)
-    url=$(printf $lyrics_template $suburl)
-    local lyrics=$(mycurl $url | hxnormalize -x | \
-                   hxselect -c 'div.dn' | sed 's/<a data-tracking..*//g')
-    lyrics=$(clean_string $lyrics)
-    echo $lyrics
+    mycurl $1 | hxnormalize -x | \
+        hxselect -c 'div.dn' | sed 's/<a data-tracking..*//g'
 }
 
 songtexte() {
-    local raw_title=$2
-    local artist=$(pquery $1 " " "+")
-    local title=$(pquery $2 " " "+")
-    local search_template="http://www.songtexte.com/search?q=%s+%s&c=songs"
-    local lyrics_template="http://www.songtexte.com/%s"
-    local url=$(printf $search_template $artist $title)
-    local suburl=$(curl -s $url | grep -i "<span>$raw_title<\/span>" | hxwls)
-    local url=$(printf $lyrics_template $suburl)
-    local lyrics=$(curl -s $url | sed 's/div id/div class/g' | \
-                   hxnormalize -x | hxselect -c 'div.lyrics')
-    lyrics=$(clean_string $lyrics)
-    echo $lyrics
+    curl -s $1 | sed 's/div id/div class/g' | \
+        hxnormalize -x | hxselect -c 'div.lyrics'
 }
 
 versuri() {
-    local raw_artist=$1
-    local raw_title=$2
-    local artist=$(pquery $1 " " "+")
-    local title=$(pquery $2 " " "+")
-    local main_template="http://www.versuri.ro/cat/%s.html"
-    local artist_template="http://www.versuri.ro%s"
-    local lyrics_template="http://www.versuri.ro%s"
-    local url=$(printf $main_template ${artist:0:1})
-    local suburl=$(curl -s $url | grep -i "$raw_artist" | hxwls)
-    url=$(printf $artist_template $suburl)
-    suburl=$(curl -s $url | grep -i "$raw_title" | hxwls)
-    url=$(printf $lyrics_template $suburl)
-    local lyrics=$(curl -s $url | \
+    curl -s $1 | \
         # Skip all the div and include everything between index0f and BOTTOM-CENTER
         awk '/div/{next}/var index0f/{f=1;next}/BOTTOM-CENTER/{print;f=0}f' | \
-        hxnormalize -x | hxselect -c 'p')
-    lyrics=$(clean_string $lyrics)
-    echo $lyrics
+        hxnormalize -x | hxselect -c 'p'
 }
 
-get_lyrics() {
-    local artist=$(clean_string $1)
-    local title=$(clean_string $2)
-    local lyrics=""
+# Get the best mached urls from the search string.
+search_for_urls() {
+    local search_str=$1
+    local template="https://www.google.com/search?q=%s+lyrics"
+    local search_url=$(printf $template ${search_str// /+})
+    mycurl $search_url | hxnormalize -x | hxselect 'h3.r' | hxwls
+}
 
-    for token in $LYRICS_CLEAN_TITLE_TOKENS; do
-       title=$(echo $title | sed "s/ *( *$token.*) *//")
-    done
-    for lyrics_fn in $LYRICS_SOURCES; do
-        lyrics=$($lyrics_fn $artist $title)
-        if [[ ! -z $lyrics ]]; then
-            break;
-        fi
-    done
-    echo -n $lyrics
+# Return the lyrics from the given url if there is a parser for that domain.
+lyrics_from_url() {
+    local url=$1
+    local lyrics=""
+    local domain=$(echo $url | \
+        awk -F// '{gsub("www.", "", $2); print $2}' | awk -F. '{print $1}')
+    if typeset -f $domain >/dev/null; then
+        lyrics=$($domain $url)
+    fi
+    clean_string $lyrics
 }
 
 help() {
-    local help_str="
-Usage: lyrics [-srh] artist title
-       lyrics [-srh] artist_and_title
+    echo "
+Usage: lyrics [-rh] str
+where str might be a songname, a songname and an artist name or some lyrics.
 Get song lyrics from multiple, selectable sources.
-    -s Use these lyrics sources, in the order they are given. Valid sources are:
-       \"$(echo $lyrics_sources_all)\"
-       When this option is not given, all the above source are considered,
-       or, if LYRICS_SOURCES is set, consider the sources listed in this
-       variable instead
     -r Raw mode. By default, clean the title name of strings like
        \"$lyrics_clean_title_tokens_all\",
        which increases the chance of finding the lyrics. If this option is set,
@@ -197,33 +80,15 @@ Get song lyrics from multiple, selectable sources.
     -h Print this help and exit
 
 Example usage:
-    Get the lyrics for some metal band that you know might find on darklyrics,
-    but for some reason you want to try some other sources first:
-$1 -s \"makeitpersonal darklyrics\" \"throes of dawn\" \"slow motion\""
-    echo $help_str
+lyrics \"anathema thin air\""
 }
 
 main () {
-    lyrics_sources_all=(makeitpersonal songlyrics metrolyrics genius azlyrics
-                        lyricsfreak darklyrics songtexte versuri)
-    : ${(A)LYRICS_SOURCES:=$lyrics_sources_all}
-
-    lyrics_clean_title_tokens_all=(demo live acoustic remix bonus)
-    : ${(A)LYRICS_CLEAN_TITLE_TOKENS:=$lyrics_clean_title_tokens_all}
-
+    local clean_tokens=(demo live acoustic remix bonus)
     while getopts ":s:rh" opt; do
         case $opt in
-            s)
-                LYRICS_SOURCES=("${(s/ /)OPTARG}")
-                local invalid_sources=${LYRICS_SOURCES:|lyrics_sources_all}
-                if [[ ! -z $invalid_sources ]]; then
-                    echo "Invalid source(s): $invalid_sources, valid sources are: \n$lyrics_sources_all"
-                    exit 1
-                fi
-                shift $((OPTIND-1))
-                ;;
             r)
-                LYRICS_CLEAN_TITLE_TOKENS=()
+                clean_tokens=()
                 shift $((OPTIND-1))
                 ;;
             \?|:)
@@ -237,21 +102,26 @@ main () {
         esac
     done
 
-    local artist_and_title artist title lyrics
-    if [[ $# -eq 0 || $# -gt 2 ]]; then
+    local search_str urls lyrics
+    if [[ $# -eq 0 || $# -gt 1 ]]; then
         echo "\e[0;31merror\033[0m: Not enough or too many arguments"
         help
         exit 1
-    elif [[ $# -eq 1 ]]; then
-        artist_and_title=(${(s.-.)1})
-        artist=$artist_and_title[1]
-        title=$artist_and_title[2]
-    elif [[ $# -eq 2 ]]; then
-        artist=$1
-        title=$2
+    else
+        search_str=$1
     fi
 
-    lyrics=$(get_lyrics $artist $title)
+    for token in $clean_tokens; do
+        search_str=$(echo $search_str | sed "s/ *( *$token.*) *//")
+    done
+
+    urls=(${(@f)$(search_for_urls $search_str)})
+    for url in $urls; do
+        lyrics=$(lyrics_from_url $url)
+        if [[ ! -z $lyrics ]]; then
+            break
+        fi
+    done
     echo $lyrics
 }
 
