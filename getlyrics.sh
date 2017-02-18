@@ -1,5 +1,24 @@
 #!/usr/bin/env zsh
 
+help_str="lyrics - All the lyrics in one place
+Usage: lyrics [-lrsh] string
+Options:
+    -e <str> Extra string to pass to the search string. By default this is \"lyrics\".
+    -l Only list the candidate urls, but do not extract the lyrics from any of them.
+    -r Raw mode. Do not remove tokens like \"live\", \"acoustic version\", etc.
+       from the input string.
+    -s List the websites from which the application can extract the lyrics
+    -h Print this help and exit"
+
+supported_websites="www.songlyrics.com
+www.metrolyrics.com
+www.genius.com
+www.azlyrics.com
+www.lyricsfreak.com
+www.songmeanings.com
+www.songtexte.com (german)
+www.versuri.ro (romanian)"
+
 mycurl() {
     local url=$1
     local user_agent="User-Agent: Mozilla/5.0 (Macintosh; \ 
@@ -32,8 +51,13 @@ azlyrics() {
 }
 
 lyricsfreak() {
-    mycurl $1 | hxnormalize -x | \
-        hxselect -c 'div.dn' | sed 's/<a data-tracking..*//g'
+    mycurl $1 | hxnormalize -x | hxselect -c 'div.dn' | \
+        sed 's/<a data-tracking..*//g'
+}
+
+songmeanings() {
+    mycurl $1 | hxnormalize -x | hxselect -c 'div.lyric-box' | \
+        awk 'BEGIN{f=1}/<div/{f=0}f'
 }
 
 songtexte() {
@@ -51,8 +75,9 @@ versuri() {
 # Get the best mached urls from the search string.
 search_for_urls() {
     local search_str=$1
-    local template="https://www.google.com/search?q=%s+lyrics"
-    local search_url=$(printf $template ${search_str// /+})
+    local extra_str=$2
+    local template="https://www.google.com/search?q=%s+%s"
+    local search_url=$(printf $template ${search_str// /+} $extra_str)
     mycurl $search_url | hxnormalize -x | hxselect 'h3.r' | hxwls
 }
 
@@ -68,44 +93,40 @@ lyrics_from_url() {
     clean_string $lyrics
 }
 
-help() {
-    echo "
-Usage: lyrics [-rh] str
-where str might be a songname, a songname and an artist name or some lyrics.
-Get song lyrics from multiple, selectable sources.
-    -r Raw mode. By default, clean the title name of strings like
-       \"$lyrics_clean_title_tokens_all\",
-       which increases the chance of finding the lyrics. If this option is set,
-       the song title is searched as it is given.
-    -h Print this help and exit
-
-Example usage:
-lyrics \"anathema thin air\""
-}
-
 main () {
     local clean_tokens=(demo live acoustic remix bonus)
-    while getopts ":s:rh" opt; do
+    local extra_str="lyrics"
+    local only_urls="false"
+    while getopts ":e:lrsh" opt; do
         case $opt in
+            e)
+                extra_str=$OPTARG
+                ;;
+            l)
+                only_urls="true"
+                ;;
             r)
                 clean_tokens=()
-                shift $((OPTIND-1))
                 ;;
-            \?|:)
-                help
+            s)
+                echo $supported_websites
+                exit 0
+                ;;
+            \?)
+                echo $help_str
                 exit 1
                 ;;
             h)
-                help
+                echo $help_str
                 exit 0
                 ;;
         esac
     done
+    shift $((OPTIND-1))
 
     local search_str urls lyrics
     if [[ $# -eq 0 || $# -gt 1 ]]; then
-        echo "\e[0;31merror\033[0m: Not enough or too many arguments"
-        help
+        echo $help_str
         exit 1
     else
         search_str=$1
@@ -115,7 +136,13 @@ main () {
         search_str=$(echo $search_str | sed "s/ *( *$token.*) *//")
     done
 
-    urls=(${(@f)$(search_for_urls $search_str)})
+    urls=(${(@f)$(search_for_urls $search_str $extra_str)})
+
+    if [[ $only_urls =~ "true" ]]; then
+        echo ${(F)urls}
+        exit 0
+    fi
+
     for url in $urls; do
         lyrics=$(lyrics_from_url $url)
         if [[ ! -z $lyrics ]]; then
@@ -126,3 +153,4 @@ main () {
 }
 
 main $@
+
