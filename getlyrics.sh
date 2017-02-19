@@ -38,6 +38,11 @@ clean_string() {
         sed 's/^ *//; s/ *$//' | cat -s
 }
 
+rm_extra_spaces() {
+    echo $1 | sed 's/^[[:space:]]*//; s/[[:space:]] *$//;
+                   s/[[:space:]][[:space:]]*/ /g'
+}
+
 songlyrics() {
     curl -s $1 | hxnormalize -x | hxselect -c 'p.songLyricsV14'
 }
@@ -148,6 +153,8 @@ moc_song() {
     mocp -i 2>/dev/null | awk -F"SongTitle: " '/SongTitle/{print $2}'
 }
 
+
+# Retrieve artist/song search string from a media file.
 file_tag() {
     local file=$1
     local tag=$2
@@ -167,6 +174,49 @@ file_artist() {
 file_song() {
     file_tag $1 "(TIT2|TT2)"
 }
+
+
+# Database functions.
+db_location() {
+    echo "$HOME/lyrics/"
+}
+
+db_artist_location() {
+    local artist=$(rm_extra_spaces $1)
+    artist=${artist// /-}
+    echo $(db_location)$artist
+}
+
+db_song_location() {
+    local artist=$(rm_extra_spaces $1)
+    local song=$(rm_extra_spaces $2)
+    artist=${artist// /-}
+    song=${song// /-}
+    echo $(db_location)$artist"/"$song
+}
+
+save_db() {
+    local artist=$1
+    local song=$2
+    local lyrics=$3
+    local location=$(db_song_location $artist $song)
+    if [[ ! -a $location ]]; then
+        mkdir -p $(db_artist_location $artist)
+        echo $lyrics > $location
+    fi
+}
+
+from_db() {
+    local artist=$1
+    local song=$2
+    local lyrics=""
+    local location=$(db_song_location $artist $song)
+    if [[ -a $location ]]; then
+        lyrics=$(<$location)
+    fi
+    echo $lyrics
+}
+
 
 main () {
     local clean_tokens=(demo live acoustic remix bonus)
@@ -203,23 +253,34 @@ main () {
     done
     shift $((OPTIND-1))
 
-    local search_str urls lyrics
+    local search_str urls artist song
+    local lyrics=""
+    local save_to_db="false"      # If true, the db can be used.
+
     # Get the search string, from one of the sources.
-    if [[ ! $from_file =~ "false" ]]; then
-        search_str=$(printf "%s %s" "$(file_artist $from_file)" "$(file_song $from_file)")
-    elif [[ $# -eq 0 ]]; then
+    if [[ ! $from_file =~ "false" ]]; then # from media file.
+        artist=$(file_artist $from_file)
+        song=$(file_song $from_file)
+        save_to_db="true"
+        search_str=$(printf "%s %s" "$artist" "$song")
+    elif [[ $# -eq 0 ]]; then   # from music player
         if cmus_running; then
-            search_str=$(printf "%s %s" "$(cmus_artist)" "$(cmus_song)")
+            artist=$(cmus_artist)
+            song=$(cmus_song)
+            save_to_db="true"
+            search_str=$(printf "%s %s" "$artist" "$song")
         elif moc_running; then
-            search_str=$(printf "%s %s" "$(moc_artist)" "$(moc_song)")
+            artist=$(moc_artist)
+            song=$(moc_song)
+            save_to_db="true"
+            search_str=$(printf "%s %s" "$artist" "$song")
         else
             echo "error: No known players available or running."
             exit 1
         fi
-    elif [[ $# -eq 1 ]]; then
+    elif [[ $# -eq 1 ]]; then   # from the command line
          search_str=$1
-    else
-        # No other sources available.
+    else                        # no other source available
         echo $help_str
         exit 1
     fi
@@ -229,7 +290,17 @@ main () {
         search_str=$(echo $search_str | sed "s/ *( *$token.*) *//")
     done
 
-    # Get candidate urls containing lyrics.
+    # Try our luck and search own db first. If that's succesful,
+    # there's nothing else to do.
+    if [[ $save_to_db =~ "true" ]]; then
+        lyrics=$(from_db $artist $song)
+        if [[ ! -z "${lyrics// /}" ]]; then
+            echo $lyrics
+            exit 0
+        fi
+    fi
+
+    # Otherwise, go to www and get candidate urls containing lyrics.
     urls=(${(@f)$(search_for_urls $search_str $extra_str)})
 
     # Echo the urls, if that is what is asked for, and exit.
@@ -238,16 +309,21 @@ main () {
         exit 0
     fi
 
-    # Parse the first url for which there is a parser and return the
-    # resulting lyrics.
+    # Extract the lyrics from the first url for which we have a parser.
     for url in $urls; do
         lyrics=$(lyrics_from_url $url)
         if [[ ! -z $lyrics ]]; then
             break
         fi
     done
+
+    # Save the result to db, if needed.
+    if [[ $save_to_db =~ "true" ]]; then
+        save_db $artist $song $lyrics
+    fi
+
+    # Return the lyrics to stdout.
     echo $lyrics
 }
 
 main $@
-
