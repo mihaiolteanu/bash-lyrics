@@ -319,13 +319,15 @@ main () {
         fi
     done
 
-    # Save the result to db, if needed.
-    if [[ $save_to_db =~ "true" ]]; then
+    # Save lyrics to db, if available and needed.
+    if [[ $save_to_db =~ "true" ]] && [[ -z "${lyrics// /}" ]]; then
         save_db $artist $song $lyrics
     fi
 
-    # Return the lyrics to stdout.
-    echo $lyrics
+    # Return the lyrics to stdout, if needed.
+    if [[ $only_save =~ "false" ]]; then
+        echo -n $lyrics
+    fi
 }
 
 main $@
