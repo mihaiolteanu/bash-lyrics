@@ -342,7 +342,7 @@ main () {
     done
 
     # Save lyrics to db, if available and needed.
-    if [[ $save_to_db =~ "true" ]] && [[ -z "${lyrics// /}" ]]; then
+    if [[ $save_to_db =~ "true" ]] && [[ ! -z "${lyrics// /}" ]]; then
         save_db $artist $song $lyrics
     fi
 
