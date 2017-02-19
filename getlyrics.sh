@@ -20,6 +20,8 @@ www.genius.com
 www.azlyrics.com
 www.lyricsfreak.com
 www.songmeanings.com
+www.musixmatch.com
+www.metalkingdom.net
 www.songtexte.com (german)
 www.versuri.ro (romanian)"
 
