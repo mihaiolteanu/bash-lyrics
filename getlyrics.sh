@@ -60,6 +60,12 @@ songmeanings() {
         awk 'BEGIN{f=1}/<div/{f=0}f'
 }
 
+musixmatch() {
+    # Add line breaks to lyrics section to prevent one big lump of words.
+    mycurl $1 | awk '{print $0"<br></br>"}' | \
+        hxnormalize -x | hxselect -c 'p.mxm-lyrics__content'
+}
+
 songtexte() {
     curl -s $1 | sed 's/div id/div class/g' | \
         hxnormalize -x | hxselect -c 'div.lyrics'
