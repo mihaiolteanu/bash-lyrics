@@ -7,11 +7,17 @@ Usage: lyrics [-lrsh] string
            Try to infer the artist and song from your music player.
 Options:
     -e <str> Extra string to pass to the search string. By default this is \"lyrics\".
-    -f <file_path> Extract the search string from a media file.
+    -f <file_path> Extract the search string from a media file. If lyrics found,
+       save them to a local database. If lyrics already found in the database,
+       return those instead.
+    -d <folder_path> Similar to -f, but for all the media files in that folder, 
+       recursively. This implies the -s option as well.
     -l Only list the candidate urls, but do not extract the lyrics from any of them.
     -r Raw mode. Do not remove tokens like \"live\", \"acoustic version\", etc.
        from the input string.
-    -s List the websites from which the application can extract the lyrics
+    -w List the websites from which the application can extract the lyrics
+    -s Only save the lyrics but do not print them to stdout. If the lyrics already
+       exist in the database, do nothing.
     -h Print this help and exit"
 
 supported_websites="www.songlyrics.com
@@ -224,8 +230,10 @@ main () {
     local clean_tokens=(demo live acoustic remix bonus)
     local extra_str="lyrics"
     local from_file="false"
+    local from_folder="false"
     local only_urls="false"
-    while getopts ":e:f:lrsh" opt; do
+    local only_save="false"
+    while getopts ":e:f:d:lrwsh" opt; do
         case $opt in
             e)
                 extra_str=$OPTARG
@@ -233,15 +241,21 @@ main () {
             f)
                 from_file=$OPTARG
                 ;;
+            d)
+                from_folder=$OPTARG
+                ;;
             l)
                 only_urls="true"
                 ;;
             r)
                 clean_tokens=()
                 ;;
-            s)
+            w)
                 echo $supported_websites
                 exit 0
+                ;;
+            s)
+                only_save="true"
                 ;;
             \?)
                 echo $help_str
@@ -260,7 +274,13 @@ main () {
     local save_to_db="false"      # If true, the db can be used.
 
     # Get the search string, from one of the sources.
-    if [[ ! $from_file =~ "false" ]]; then # from media file.
+    if [[ ! $from_folder =~ "false" ]]; then # from all media files in folder
+        for media_file in $from_folder/**/*.mp3; do
+            echo $media_file
+            $0 -sf $media_file  # Call self. Saving to db is taken care of.
+        done
+        exit 0
+    elif [[ ! $from_file =~ "false" ]]; then # from media file.
         artist=$(file_artist $from_file)
         song=$(file_song $from_file)
         save_to_db="true"
@@ -297,7 +317,9 @@ main () {
     if [[ $save_to_db =~ "true" ]]; then
         lyrics=$(from_db $artist $song)
         if [[ ! -z "${lyrics// /}" ]]; then
-            echo $lyrics
+            if [[ $only_save =~ "false" ]]; then
+                echo $lyrics
+            fi
             exit 0
         fi
     fi
