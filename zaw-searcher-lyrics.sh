@@ -13,6 +13,8 @@ function zaw-lyrics-src-searcher() {
     if [[ $? != 0 ]]; then
         return 1
     fi
+    buf=$(echo $buf | awk 'BEGIN{FS=":"}{print $1, $3}' | \
+              awk 'BEGIN{FS="/"}{print $(NF-1), $NF}')
     : ${(A)candidates::=${(f)buf}}
     : ${(A)cand_descriptions::=${(f)buf}}
     actions=(\
@@ -23,6 +25,25 @@ function zaw-lyrics-src-searcher() {
                       "Cat" \
                       "Search on youtube" \
         )
+}
+
+function zaw-muse-artist-search() {
+    #candidates=(${(@f)$(ls ~/lyrics)})
+    : ${(A)candidates::=${(@f)$(ls ~/lyrics)}}
+    #candidates=("\033[35m one" "two" "three")
+    actions=(\
+             zaw-muse-artist-search-lastfm \
+        )
+    act_descriptions=(\
+            "Open artist in last.fm" \
+        )
+    #zaw-lyrics-src-searcher
+}
+
+function zaw-muse-artist-search-lastfm() {
+    local pattern="www.last.fm/music/%s"
+    local artist=${1//-/+}
+    firefox $(printf $pattern $artist)
 }
 
 function zaw-lyrics-src-searcher-play () {
@@ -51,4 +72,4 @@ function zaw-lyrics-src-searcher-youtube() {
 }
 
 zaw-register-src -n lyrics-searcher zaw-lyrics-src-searcher
-
+zaw-register-src -n artist-search zaw-muse-artist-search
