@@ -7,6 +7,7 @@ Usage: lyrics [-lrsh] string
            Try to infer the artist and song from your music player.
 Options:
     -e <str> Extra string to pass to the search string. By default this is \"lyrics\".
+    -f <file_path> Extract the search string from a media file.
     -l Only list the candidate urls, but do not extract the lyrics from any of them.
     -r Raw mode. Do not remove tokens like \"live\", \"acoustic version\", etc.
        from the input string.
@@ -82,7 +83,7 @@ versuri() {
     curl -s $1 | \
         # Skip all the div and include everything between index0f and BOTTOM-CENTER
         awk '/div/{next}/var index0f/{f=1;next}/BOTTOM-CENTER/{print;f=0}f' | \
-        hxnormalize -x | hxselect -c 'p'
+            hxnormalize -x | hxselect -c 'p'
 }
 
 # Get the best mached urls from the search string.
@@ -147,14 +148,38 @@ moc_song() {
     mocp -i 2>/dev/null | awk -F"SongTitle: " '/SongTitle/{print $2}'
 }
 
+file_tag() {
+    local file=$1
+    local tag=$2
+    local id3tags=$(id3v2 -l $file)
+    # Make sure the file has id3v2 tags.
+    if [[ $id3tags =~ "No ID3v2 tag" ]]; then
+        id3v2 --convert $file > /dev/null
+    fi
+    local pattern=$(printf '/%s/{print $2}' $tag)
+    id3v2 -l $file | awk -F": " $pattern
+}
+
+file_artist() {
+    file_tag $1 "(TPE1|TP1)"
+}
+
+file_song() {
+    file_tag $1 "(TIT2|TT2)"
+}
+
 main () {
     local clean_tokens=(demo live acoustic remix bonus)
     local extra_str="lyrics"
+    local from_file="false"
     local only_urls="false"
-    while getopts ":e:lrsh" opt; do
+    while getopts ":e:f:lrsh" opt; do
         case $opt in
             e)
                 extra_str=$OPTARG
+                ;;
+            f)
+                from_file=$OPTARG
                 ;;
             l)
                 only_urls="true"
@@ -179,8 +204,10 @@ main () {
     shift $((OPTIND-1))
 
     local search_str urls lyrics
-    # Get the search string from a music player, if avaialble.
-    if [[ $# -eq 0 ]]; then
+    # Get the search string, from one of the sources.
+    if [[ ! $from_file =~ "false" ]]; then
+        search_str=$(printf "%s %s" "$(file_artist $from_file)" "$(file_song $from_file)")
+    elif [[ $# -eq 0 ]]; then
         if cmus_running; then
             search_str=$(printf "%s %s" "$(cmus_artist)" "$(cmus_song)")
         elif moc_running; then
@@ -190,23 +217,29 @@ main () {
             exit 1
         fi
     elif [[ $# -eq 1 ]]; then
-        search_str=$1
+         search_str=$1
     else
+        # No other sources available.
         echo $help_str
         exit 1
     fi
 
+    # Cleanup the search string.
     for token in $clean_tokens; do
         search_str=$(echo $search_str | sed "s/ *( *$token.*) *//")
     done
 
+    # Get candidate urls containing lyrics.
     urls=(${(@f)$(search_for_urls $search_str $extra_str)})
 
+    # Echo the urls, if that is what is asked for, and exit.
     if [[ $only_urls =~ "true" ]]; then
         echo ${(F)urls}
         exit 0
     fi
 
+    # Parse the first url for which there is a parser and return the
+    # resulting lyrics.
     for url in $urls; do
         lyrics=$(lyrics_from_url $url)
         if [[ ! -z $lyrics ]]; then
@@ -217,3 +250,4 @@ main () {
 }
 
 main $@
+
