@@ -66,6 +66,10 @@ musixmatch() {
         hxnormalize -x | hxselect -c 'p.mxm-lyrics__content'
 }
 
+metalkingdom() {
+    mycurl $1 | hxselect -c 'div.sly-lyrics'
+}
+
 songtexte() {
     curl -s $1 | sed 's/div id/div class/g' | \
         hxnormalize -x | hxselect -c 'div.lyrics'
@@ -159,4 +163,3 @@ main () {
 }
 
 main $@
-
