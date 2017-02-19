@@ -2,6 +2,9 @@
 
 help_str="lyrics - All the lyrics in one place
 Usage: lyrics [-lrsh] string
+           Search for lyrics using the given string, just like a google search.
+       lyrics [-lrsh]
+           Try to infer the artist and song from your music player.
 Options:
     -e <str> Extra string to pass to the search string. By default this is \"lyrics\".
     -l Only list the candidate urls, but do not extract the lyrics from any of them.
@@ -103,6 +106,47 @@ lyrics_from_url() {
     clean_string $lyrics
 }
 
+# Return error if cmus is not available or it's not playing at the moment.
+cmus_running() {
+    local str=$(cmus-remote -Q 2>/dev/null)
+    if [[ -z ${str// /} ]]; then
+        return 1
+    fi
+    local statuss=$(echo $str | awk -F"status " '/status/{print $2}')
+    if [[ $statuss =~ "stopped" ]]; then
+        return 1
+    fi
+    return 0
+}
+
+cmus_artist() {
+    cmus-remote -Q | awk -F"tag artist " '/tag artist/{print $2}'
+}
+
+cmus_song() {
+    cmus-remote -Q | awk -F"tag title " '/tag title/{print $2}'
+}
+
+moc_running() {
+    local str=$(mocp -i 2>/dev/null)
+    if [[ -z ${str// /} ]]; then
+        return 1
+    fi
+    local statuss=$(echo $str | awk -F"State: " '/State/{print $2}')
+    if [[ $statuss =~ "STOP" ]]; then
+        return 1
+    fi
+    return 0
+}
+
+moc_artist() {
+    mocp -i 2>/dev/null | awk -F"Artist: " '/Artist/{print $2}'
+}
+
+moc_song() {
+    mocp -i 2>/dev/null | awk -F"SongTitle: " '/SongTitle/{print $2}'
+}
+
 main () {
     local clean_tokens=(demo live acoustic remix bonus)
     local extra_str="lyrics"
@@ -135,11 +179,21 @@ main () {
     shift $((OPTIND-1))
 
     local search_str urls lyrics
-    if [[ $# -eq 0 || $# -gt 1 ]]; then
+    # Get the search string from a music player, if avaialble.
+    if [[ $# -eq 0 ]]; then
+        if cmus_running; then
+            search_str=$(printf "%s %s" "$(cmus_artist)" "$(cmus_song)")
+        elif moc_running; then
+            search_str=$(printf "%s %s" "$(moc_artist)" "$(moc_song)")
+        else
+            echo "error: No known players available or running."
+            exit 1
+        fi
+    elif [[ $# -eq 1 ]]; then
+        search_str=$1
+    else
         echo $help_str
         exit 1
-    else
-        search_str=$1
     fi
 
     for token in $clean_tokens; do
