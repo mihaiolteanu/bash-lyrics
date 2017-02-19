@@ -1,23 +1,40 @@
 #!/usr/bin/env zsh
 
-help_str="lyrics - All the lyrics in one place
-Usage: lyrics [-lrsh] string
-           Search for lyrics using the given string, just like a google search.
-       lyrics [-lrsh]
-           Try to infer the artist and song from your music player.
+help_str="$0 - All the lyrics in one place
+
+Usage: $0 [-efdlrwsh] [string file folder]
+
+       Search and save song lyrics using one of the sources:
+       string - A string containing artist name, song name, part of the searched 
+                lyrics or any combination of the above. This is the only option
+                that does *not* save the lyrics for later retrieval.
+       file   - A media file containing artist/song title info (mp3 supported)
+       folder - A folder containing media file(s).
+              - With no source given, get the info from the media player, if 
+                supported and running (cmus and moc supported).
+
 Options:
-    -e <str> Extra string to pass to the search string. By default this is \"lyrics\".
-    -f <file_path> Extract the search string from a media file. If lyrics found,
-       save them to a local database. If lyrics already found in the database,
+    -e <str> Replace the \"lyrics\" string that is appended by default to the
+       search string. This can help increase the chance of finding the lyrics.
+
+    -f <file> Extract the search string from a media file. If lyrics are found, 
+       save them to a local database. If the lyrics are already in the database,
        return those instead.
-    -d <folder_path> Similar to -f, but for all the media files in that folder, 
+
+    -d <folder> Similar to -f, but for all the media files in that folder, 
        recursively. This implies the -s option as well.
+
     -l Only list the candidate urls, but do not extract the lyrics from any of them.
+
     -r Raw mode. Do not remove tokens like \"live\", \"acoustic version\", etc.
-       from the input string.
-    -w List the websites from which the application can extract the lyrics
+       from the search string. These tokens are removed by default from the
+       search_string to increase the chance of finding the lyrics.
+
+    -w List the websites from which the application can extract the lyrics.
+
     -s Only save the lyrics but do not print them to stdout. If the lyrics already
        exist in the database, do nothing.
+
     -h Print this help and exit"
 
 supported_websites="www.songlyrics.com
@@ -271,7 +288,10 @@ main () {
 
     local search_str urls artist song
     local lyrics=""
-    local save_to_db="false"      # If true, the db can be used.
+    # db is only used when search string is from file or folder,
+    # otherwise the artist and song strings are not reliable
+    local save_to_db="false"
+    # 
 
     # Get the search string, from one of the sources.
     if [[ ! $from_folder =~ "false" ]]; then # from all media files in folder
