@@ -302,8 +302,7 @@ main () {
     # Get the search string, from one of the sources.
     if [[ ! $from_folder =~ "false" ]]; then # from all media files in folder
         for media_file in $from_folder/**/*.mp3; do
-            echo $media_file
-            $0 -sf $media_file  # Call self. Saving to db is taken care of.
+            ($0 -sf $media_file)  # Call self. Saving to db is taken care of.
         done
         exit 0
     elif [[ ! $from_file =~ "false" ]]; then # from media file.
