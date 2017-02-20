@@ -82,14 +82,19 @@ clean_search_item() {
 }
 
 makeitpersonal() {
-    local artist=${1// /-}
-    local title=${2// /-}
-    local template="https://makeitpersonal.co/lyrics?artist=%s&title=%s"
-    local url=$(printf $template $artist $title)
-    local lyrics=$(curl -s $url)
-    local error_str=("Sorry, We don't have lyrics for this song yet" \
-                         "title is empty" \
-                         "artist is empty")
+    local artist title lyrics url template error_str
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /-}
+        title=${2// /-}
+        template="https://makeitpersonal.co/lyrics?artist=%s&title=%s"
+        url=$(printf $template $artist $title)
+    fi
+    lyrics=$(curl -s $url)
+    error_str=("Sorry, We don't have lyrics for this song yet" \
+               "title is empty" \
+               "artist is empty")
     if [[ $error_str =~ $lyrics ]]; then
         lyrics=""
     fi
@@ -162,6 +167,22 @@ lyrics_from_url() {
     if typeset -f $domain >/dev/null; then
         lyrics=$($domain $url)
     fi
+    clean_string $lyrics
+}
+
+lyrics_from_artist_song() {
+    local artist=$1
+    local song=$2
+    # local sources=(makeitpersonal songlyrics metrolyrics genius azlyrics
+    #                lyricsfreak songmeanings musixmatch metalkingdom
+    #                songtexte versuri)
+    local sources=(makeitpersonal)
+    for src_fn in $sources; do
+        local lyrics=$($src_fn $artist $song )
+        if [[ ! -z "${lyrics// /}" ]]; then
+            break
+        fi
+    done
     clean_string $lyrics
 }
 
@@ -351,7 +372,7 @@ main () {
     if [[ $reliable_src =~ "true" ]]; then
         lyrics=$(from_db $artist $song)
         if [[ -z "${lyrics// /}" ]]; then
-            lyrics=$(makeitpersonal $artist $song)
+            lyrics=$(lyrics_from_artist_song $artist $song)
             # Save lyrics to db, if available and needed.
             if [[ ! -z "${lyrics// /}" ]]; then
                 save_db $artist $song $lyrics
