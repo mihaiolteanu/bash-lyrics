@@ -102,23 +102,77 @@ makeitpersonal() {
 }
 
 songlyrics() {
-    curl -s $1 | hxnormalize -x | hxselect -c 'p.songLyricsV14'
+    local artist title lyrics url template
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /-}
+        title=${2// /-}
+        template="http://www.songlyrics.com/%s/%s-lyrics/"
+        url=$(printf $template $artist $title)
+    fi
+    lyrics=$(curl -s $url | hxnormalize -x | hxselect -c 'p.songLyricsV14')
+    if [[ $lyrics =~ "Sorry, we have no" ]]; then
+        lyrics=""
+    fi
+    echo -n $lyrics
 }
 
 metrolyrics() {
-    curl -s $1 | hxnormalize -x | hxselect -c -s '\n\n' 'p.verse'
+    local artist title lyrics url template
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /-}
+        title=${2// /-}
+        template="http://www.metrolyrics.com/%s-lyrics-%s.html"
+        url=$(printf $template $title $artist)
+    fi
+    curl -s $url | hxnormalize -x | hxselect -c -s '\n\n' 'p.verse'
 }
 
 genius() {
-    curl -sL $1 | hxnormalize -x | hxselect -c 'lyrics.lyrics'
+    local artist title url template
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /-}
+        title=${2// /-}
+        template="https://genius.com/%s-%s-lyrics"
+        url=$(printf $template $artist $title)
+    fi
+    curl -sL $url | hxnormalize -x  | hxselect -ci 'lyrics.lyrics'
 }
 
 azlyrics() {
-    mycurl $1 | awk '/Usage of azlyrics.com/{f=1; next}/<!--/{f=0}f==1'
+    local artist title url template
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /}
+        title=${2// /}
+        template="http://www.azlyrics.com/lyrics/%s/%s.html"
+        url=$(printf $template $artist $title)
+    fi
+    mycurl $url | awk '/Usage of azlyrics.com/{f=1; next}/<!--/{f=0}f==1'
 }
 
 lyricsfreak() {
-    mycurl $1 | hxnormalize -x | hxselect -c 'div.dn' | \
+    local artist title raw_title url template
+    local artist_template lyrics_template suburl
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /+}
+        title=${2// /+}
+        raw_title=$2
+        artist_template="http://www.lyricsfreak.com/%s/%s/"
+        lyrics_template="http://www.lyricsfreak.com/%s"
+        url=$(printf $artist_template ${artist:0:1} $artist)
+        suburl=$(mycurl $url | grep -i "$raw_title" | hxwls)
+        url=$(printf $lyrics_template $suburl)
+    fi
+    mycurl $url | hxnormalize -x | hxselect -c 'div.dn' | \
         sed 's/<a data-tracking..*//g'
 }
 
@@ -137,16 +191,76 @@ metalkingdom() {
     mycurl $1 | hxselect -c 'div.sly-lyrics'
 }
 
+darklyrics() {
+    local artist title raw_title lyrics url
+    local albums_template lyrics_template album awk_filter
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /}
+        title=${2// /}
+        raw_title=$2
+        albums_template="http://www.darklyrics.com/%s/%s.html"
+        lyrics_template="http://www.darklyrics.com/lyrics/%s/%s.html"
+        url=$(printf $albums_template ${artist:0:1} $artist)
+        album=$(mycurl $url | grep "href" | grep -i "$raw_title" | \
+                head -n1 | hxwls)
+        if [[ ! -z "${album// }" ]]; then
+            album=${$(basename $album):r}
+            url=$(printf $lyrics_template $artist $album)
+        fi
+    fi
+    awk_filter=$(printf 'BEGIN{IGNORECASE=1}/h3..*%s/{f=1;next}/h3/{f=0}f' \
+                         $raw_title)
+    mycurl $url | awk $awk_filter
+}
+
 songtexte() {
-    curl -s $1 | sed 's/div id/div class/g' | \
-        hxnormalize -x | hxselect -c 'div.lyrics'
+    local artist title raw_title lyrics url
+    local search_template lyrics_template suburl
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /-}
+        title=${2// /-}
+        raw_title=$2
+        search_template="http://www.songtexte.com/search?q=%s+%s&c=all"
+        lyrics_template="http://www.songtexte.com/%s"
+        url=$(printf $search_template $artist $title)
+        suburl=$(curl -s $url | grep -i "<span>$raw_title<\/span>" | hxwls | head -n1)
+        url=$(printf $lyrics_template $suburl)
+    fi 
+    lyrics=$(curl -s $url | sed 's/div id/div class/g' | \
+                 hxnormalize -x | hxselect -c 'div.lyrics')
+    if [[ $lyrics =~ "Leider kein Songtext" ]]; then
+        lyrics=""
+    fi
+    echo -n $lyrics
 }
 
 versuri() {
-    curl -s $1 | \
+    local artist title raw_artist raw_title lyrics url template
+    local main_template search_template lyrics_template suburl
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /+}
+        title=${2// /+}
+        raw_artist=$1
+        raw_title=$2
+        main_template="http://www.versuri.ro/cat/%s.html"
+        artist_template="http://www.versuri.ro%s"
+        lyrics_template="http://www.versuri.ro%s"
+        url=$(printf $main_template ${artist:0:1})
+        suburl=$(curl -s $url | grep -i "$raw_artist" | hxwls)
+        url=$(printf $artist_template $suburl)
+        suburl=$(curl -s $url | grep -i "$raw_title" | hxwls)
+        url=$(printf $lyrics_template $suburl)
+    fi
+    curl -s $url | \
         # Skip all the div and include everything between index0f and BOTTOM-CENTER
         awk '/div/{next}/var index0f/{f=1;next}/BOTTOM-CENTER/{print;f=0}f' | \
-            hxnormalize -x | hxselect -c 'p'
+        hxnormalize -x | hxselect -c 'p'
 }
 
 # Get the best mached urls from the search string.
