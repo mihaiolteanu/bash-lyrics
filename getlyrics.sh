@@ -376,6 +376,11 @@ main () {
     if [[ $only_save =~ "false" ]]; then
         echo -n $lyrics
     fi
+
+    # Or report 'lyrics not found for specified media file' error.
+    if [[ ! $from_file =~ "false" ]] && [[ -z "${lyrics// /}" ]]; then
+        >&2 echo $from_file
+    fi
 }
 
 main $@
