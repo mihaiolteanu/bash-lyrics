@@ -252,20 +252,12 @@ from_db() {
 main () {
     local clean_tokens=(demo live acoustic remix bonus)
     local extra_str="lyrics"
-    local from_file="false"
-    local from_folder="false"
     local only_urls="false"
     local only_save="false"
-    while getopts ":e:f:d:lrwsh" opt; do
+    while getopts ":e:lrwsh" opt; do
         case $opt in
             e)
                 extra_str=$OPTARG
-                ;;
-            f)
-                from_file=$OPTARG
-                ;;
-            d)
-                from_folder=$OPTARG
                 ;;
             l)
                 only_urls="true"
@@ -296,41 +288,38 @@ main () {
     local lyrics=""
     # db is only used when search string is from file or folder,
     # otherwise the artist and song strings are not reliable
-    local save_to_db="false"
-    # 
+    local save_to_db="true"
 
     # Get the search string, from one of the sources.
-    if [[ ! $from_folder =~ "false" ]]; then # from all media files in folder
-        for media_file in $from_folder/**/*.mp3; do
-            ($0 -sf $media_file)  # Call self. Saving to db is taken care of.
-        done
-        exit 0
-    elif [[ ! $from_file =~ "false" ]]; then # from media file.
-        artist=$(file_artist $from_file)
-        song=$(file_song $from_file)
-        save_to_db="true"
-        search_str=$(printf "%s %s" "$artist" "$song")
-    elif [[ $# -eq 0 ]]; then   # from music player
+    if [[ $# -eq 0 ]]; then     # from music player
         if cmus_running; then
             artist=$(cmus_artist)
             song=$(cmus_song)
-            save_to_db="true"
-            search_str=$(printf "%s %s" "$artist" "$song")
         elif moc_running; then
             artist=$(moc_artist)
             song=$(moc_song)
-            save_to_db="true"
-            search_str=$(printf "%s %s" "$artist" "$song")
         else
             echo "error: No known players available or running."
             exit 1
         fi
-    elif [[ $# -eq 1 ]]; then   # from the command line
-         search_str=$1
-    else                        # no other source available
+    elif [[ $# -eq 1 ]]; then
+        if [[ -d $1 ]]; then    # from folder
+            for media_file in $1/**/*.mp3; do
+                ($0 -s $media_file)  # Call self. Saving to db is taken care of.
+            done
+            exit 0
+        elif [[ -a $1 ]]; then  # from file
+            artist=$(file_artist $1)
+            song=$(file_song $1)
+        else                    # from cli parameter string
+            save_to_db="false"
+            search_str=$1
+        fi
+    else                        # no other sources available
         echo $help_str
         exit 1
     fi
+    search_str=$(printf "%s %s" "$artist" "$song")
 
     # Cleanup the search string.
     for token in $clean_tokens; do
