@@ -221,9 +221,12 @@ db_song_location() {
 }
 
 save_db() {
-    local artist=$1
-    local song=$2
+    local artist=${1:l}
+    local song=${2:l}
     local lyrics=$3
+    if [[ -z "${artist// /}" ]] || [[ -z "${song// /}" ]] || [[ -z "${lyrics// /}" ]]; then
+        return                  # No point in saving gibberish.
+    fi
     local location=$(db_song_location $artist $song)
     if [[ ! -a $location ]]; then
         mkdir -p $(db_artist_location $artist)
@@ -232,9 +235,12 @@ save_db() {
 }
 
 from_db() {
-    local artist=$1
-    local song=$2
+    local artist=${1:l}
+    local song=${2:l}
     local lyrics=""
+    if [[ -z "${artist// /}" ]] || [[ -z "${song// /}" ]]; then
+        return
+    fi
     local location=$(db_song_location $artist $song)
     if [[ -a $location ]]; then
         lyrics=$(<$location)
