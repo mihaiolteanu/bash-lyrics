@@ -68,6 +68,19 @@ rm_extra_spaces() {
                    s/[[:space:]][[:space:]]*/ /g'
 }
 
+# Cleanup an artist or song item.
+clean_search_item() {
+    local cleanup_tokens=(demo live acoustic remix bonus)
+    local item=$1
+    item=$(rm_extra_spaces $item)    # no extra spaces
+    item=${item//[.,?!]/}            # remove special chars
+    item=${item:l}                   # lowercase
+    for token in $cleanup_tokens; do # remove tokens
+        item=$(echo $item | sed "s/ *( *$token.*) *//")
+    done
+    echo $item
+}
+
 songlyrics() {
     curl -s $1 | hxnormalize -x | hxselect -c 'p.songLyricsV14'
 }
@@ -207,22 +220,19 @@ db_location() {
 }
 
 db_artist_location() {
-    local artist=$(rm_extra_spaces $1)
-    artist=${artist// /-}
+    local artist=${1// /-}
     echo $(db_location)$artist
 }
 
 db_song_location() {
-    local artist=$(rm_extra_spaces $1)
-    local song=$(rm_extra_spaces $2)
-    artist=${artist// /-}
-    song=${song// /-}
+    artist=${1// /-}
+    song=${2// /-}
     echo $(db_location)$artist"/"$song
 }
 
 save_db() {
-    local artist=${1:l}
-    local song=${2:l}
+    local artist=$1
+    local song=$2
     local lyrics=$3
     if [[ -z "${artist// /}" ]] || [[ -z "${song// /}" ]] || [[ -z "${lyrics// /}" ]]; then
         return                  # No point in saving gibberish.
@@ -235,8 +245,8 @@ save_db() {
 }
 
 from_db() {
-    local artist=${1:l}
-    local song=${2:l}
+    local artist=$1
+    local song=$2
     local lyrics=""
     if [[ -z "${artist// /}" ]] || [[ -z "${song// /}" ]]; then
         return
@@ -250,7 +260,6 @@ from_db() {
 
 
 main () {
-    local clean_tokens=(demo live acoustic remix bonus)
     local extra_str="lyrics"
     local only_urls="false"
     local only_save="false"
