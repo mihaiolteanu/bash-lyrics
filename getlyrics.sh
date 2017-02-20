@@ -81,6 +81,21 @@ clean_search_item() {
     echo $item
 }
 
+makeitpersonal() {
+    local artist=${1// /-}
+    local title=${2// /-}
+    local template="https://makeitpersonal.co/lyrics?artist=%s&title=%s"
+    local url=$(printf $template $artist $title)
+    local lyrics=$(curl -s $url)
+    local error_str=("Sorry, We don't have lyrics for this song yet" \
+                         "title is empty" \
+                         "artist is empty")
+    if [[ $error_str =~ $lyrics ]]; then
+        lyrics=""
+    fi
+    echo -n $lyrics
+}
+
 songlyrics() {
     curl -s $1 | hxnormalize -x | hxselect -c 'p.songLyricsV14'
 }
@@ -297,7 +312,7 @@ main () {
     local lyrics=""
     # db is only used when search string is from file or folder,
     # otherwise the artist and song strings are not reliable
-    local save_to_db="true"
+    local reliable_src="true"
 
     # Get the search string, from one of the sources.
     if [[ $# -eq 0 ]]; then     # from music player
@@ -321,52 +336,48 @@ main () {
             artist=$(file_artist $1)
             song=$(file_song $1)
         else                    # from cli parameter string
-            save_to_db="false"
+            reliable_src="false"
             search_str=$1
         fi
     else                        # no other sources available
         echo $help_str
         exit 1
     fi
-    search_str=$(printf "%s %s" "$artist" "$song")
 
-    # Cleanup the search string.
-    for token in $clean_tokens; do
-        search_str=$(echo $search_str | sed "s/ *( *$token.*) *//")
-    done
+    artist=$(clean_search_item $artist)
+    song=$(clean_search_item $song)
 
-    # Try our luck and search own db first. If that's succesful,
-    # there's nothing else to do.
-    if [[ $save_to_db =~ "true" ]]; then
+    # If lyrics not found in the db, save them, otherwise, copy them.
+    if [[ $reliable_src =~ "true" ]]; then
         lyrics=$(from_db $artist $song)
-        if [[ ! -z "${lyrics// /}" ]]; then
-            if [[ $only_save =~ "false" ]]; then
-                echo $lyrics
+        if [[ -z "${lyrics// /}" ]]; then
+            lyrics=$(makeitpersonal $artist $song)
+            # Save lyrics to db, if available and needed.
+            if [[ ! -z "${lyrics// /}" ]]; then
+                save_db $artist $song $lyrics
             fi
+        fi
+    else
+        # Only use a search engine for unreliable sources (artist and/or
+        # song name are not necessarly known or cannot be split apart from
+        # one another). The source in this case is usually a cli string.
+
+        # Use a search engine to get candidate urls.
+        urls=(${(@f)$(search_for_urls $search_str $extra_str)})
+
+        # Echo the urls, if that is what is asked for, and exit.
+        if [[ $only_urls =~ "true" ]]; then
+            echo ${(F)urls}
             exit 0
         fi
-    fi
 
-    # Otherwise, go to www and get candidate urls containing lyrics.
-    urls=(${(@f)$(search_for_urls $search_str $extra_str)})
-
-    # Echo the urls, if that is what is asked for, and exit.
-    if [[ $only_urls =~ "true" ]]; then
-        echo ${(F)urls}
-        exit 0
-    fi
-
-    # Extract the lyrics from the first url for which we have a parser.
-    for url in $urls; do
-        lyrics=$(lyrics_from_url $url)
-        if [[ ! -z $lyrics ]]; then
-            break
-        fi
-    done
-
-    # Save lyrics to db, if available and needed.
-    if [[ $save_to_db =~ "true" ]] && [[ ! -z "${lyrics// /}" ]]; then
-        save_db $artist $song $lyrics
+        # Extract the lyrics from the first url for which we have a parser.
+        for url in $urls; do
+            lyrics=$(lyrics_from_url $url)
+            if [[ ! -z $lyrics ]]; then
+                break
+            fi
+        done
     fi
 
     # Return the lyrics to stdout, if needed.
@@ -375,8 +386,8 @@ main () {
     fi
 
     # Or report 'lyrics not found for specified media file' error.
-    if [[ ! $from_file =~ "false" ]] && [[ -z "${lyrics// /}" ]]; then
-        >&2 echo $from_file
+    if [[ -z "${lyrics// /}" ]]; then
+        >&2 echo $1
     fi
 }
 
