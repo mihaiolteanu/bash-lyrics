@@ -182,8 +182,17 @@ songmeanings() {
 }
 
 musixmatch() {
+    local artist title url template
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /-}
+        title=${2// /-}
+        template="https://www.musixmatch.com/lyrics/%s/%s"
+        url=$(printf $template $artist $title)
+    fi
     # Add line breaks to lyrics section to prevent one big lump of words.
-    mycurl $1 | awk '{print $0"<br></br>"}' | \
+    mycurl $url | awk '{print $0"<br></br>"}' | \
         hxnormalize -x | hxselect -c 'p.mxm-lyrics__content'
 }
 
