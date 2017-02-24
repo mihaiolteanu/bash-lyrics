@@ -176,11 +176,6 @@ lyricsfreak() {
         sed 's/<a data-tracking..*//g'
 }
 
-songmeanings() {
-    mycurl $1 | hxnormalize -x | hxselect -c 'div.lyric-box' | \
-        awk 'BEGIN{f=1}/<div/{f=0}f'
-}
-
 musixmatch() {
     local artist title url template
     if [[ $1 =~ "http" ]]; then
@@ -194,10 +189,6 @@ musixmatch() {
     # Add line breaks to lyrics section to prevent one big lump of words.
     mycurl $url | awk '{print $0"<br></br>"}' | \
         hxnormalize -x | hxselect -c 'p.mxm-lyrics__content'
-}
-
-metalkingdom() {
-    mycurl $1 | hxselect -c 'div.sly-lyrics'
 }
 
 darklyrics() {
