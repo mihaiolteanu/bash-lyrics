@@ -416,15 +416,11 @@ from_db() {
 
 main () {
     local extra_str="lyrics"
-    local only_urls="false"
     local only_save="false"
     while getopts ":e:lrw:Wsh" opt; do
         case $opt in
             e)
                 extra_str=$OPTARG
-                ;;
-            l)
-                only_urls="true"
                 ;;
             r)
                 clean_tokens=()
@@ -507,12 +503,6 @@ main () {
 
         # Use a search engine to get candidate urls.
         urls=(${(@f)$(search_for_urls $search_str $extra_str)})
-
-        # Echo the urls, if that is what is asked for, and exit.
-        if [[ $only_urls =~ "true" ]]; then
-            echo ${(F)urls}
-            exit 0
-        fi
 
         # Extract the lyrics from the first url for which we have a parser.
         for url in $urls; do
