@@ -42,6 +42,9 @@ Options:
 
     -h Print this help and exit"
 
+# Extract the contents of any html tag. Pure magic!
+alias hxmagic="hxnormalize -x | hxselect -c"
+
 mycurl() {
     local url=$1
     local user_agent="User-Agent: Mozilla/5.0 (Macintosh; \ 
@@ -104,7 +107,7 @@ songlyrics() {
         template="http://www.songlyrics.com/%s/%s-lyrics/"
         url=$(printf $template $artist $title)
     fi
-    lyrics=$(curl -s $url | hxnormalize -x | hxselect -c 'p.songLyricsV14')
+    lyrics=$(curl -s $url | hxmagic 'p.songLyricsV14')
     if [[ $lyrics =~ "Sorry, we have no" ]]; then
         lyrics=""
     fi
@@ -121,7 +124,7 @@ metrolyrics() {
         template="http://www.metrolyrics.com/%s-lyrics-%s.html"
         url=$(printf $template $title $artist)
     fi
-    curl -s $url | hxnormalize -x | hxselect -c -s '\n\n' 'p.verse'
+    curl -s $url | hxmagic -s '\n\n' 'p.verse'
 }
 
 genius() {
@@ -134,7 +137,7 @@ genius() {
         template="https://genius.com/%s-%s-lyrics"
         url=$(printf $template $artist $title)
     fi
-    curl -sL $url | hxnormalize -x  | hxselect -ci 'lyrics.lyrics'
+    curl -sL $url | hxmagic 'lyrics.lyrics'
 }
 
 azlyrics() {
@@ -165,8 +168,7 @@ lyricsfreak() {
         suburl=$(mycurl $url | grep -i "$raw_title" | hxwls)
         url=$(printf $lyrics_template $suburl)
     fi
-    mycurl $url | hxnormalize -x | hxselect -c 'div.dn' | \
-        sed 's/<a data-tracking..*//g'
+    mycurl $url | hxmagic 'div.dn' | sed 's/<a data-tracking..*//g'
 }
 
 musixmatch() {
@@ -180,8 +182,7 @@ musixmatch() {
         url=$(printf $template $artist $title)
     fi
     # Add line breaks to lyrics section to prevent one big lump of words.
-    mycurl $url | awk '{print $0"<br></br>"}' | \
-        hxnormalize -x | hxselect -c 'p.mxm-lyrics__content'
+    mycurl $url | awk '{print $0"<br></br>"}' | hxmagic 'p.mxm-lyrics__content'
 }
 
 darklyrics() {
@@ -223,8 +224,7 @@ songtexte() {
         suburl=$(curl -s $url | grep -i "<span>$raw_title<\/span>" | hxwls | head -n1)
         url=$(printf $lyrics_template $suburl)
     fi 
-    lyrics=$(curl -s $url | sed 's/div id/div class/g' | \
-                 hxnormalize -x | hxselect -c 'div.lyrics')
+    lyrics=$(curl -s $url | sed 's/div id/div class/g' | hxmagic 'div.lyrics')
     if [[ $lyrics =~ "Leider kein Songtext" ]]; then
         lyrics=""
     fi
@@ -253,7 +253,7 @@ versuri() {
     curl -s $url | \
         # Skip all the div and include everything between index0f and BOTTOM-CENTER
         awk '/div/{next}/var index0f/{f=1;next}/BOTTOM-CENTER/{print;f=0}f' | \
-        hxnormalize -x | hxselect -c 'p'
+            hxmagic 'p'
 }
 
 # Get the best mached urls from the search string.
@@ -262,7 +262,7 @@ search_for_urls() {
     local extra_str=$2
     local template="https://www.google.com/search?q=%s+%s"
     local search_url=$(printf $template ${search_str// /+} $extra_str)
-    mycurl $search_url | hxnormalize -x | hxselect 'h3.r' | hxwls
+    mycurl $search_url | hxmagic 'h3.r' | hxwls
 }
 
 # Return the lyrics from the given url if there is a parser for that domain.
