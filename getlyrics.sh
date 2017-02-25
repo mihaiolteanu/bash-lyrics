@@ -168,7 +168,10 @@ lyricsfreak() {
         suburl=$(mycurl $url | grep -i "$raw_title" | hxwls)
         url=$(printf $lyrics_template $suburl)
     fi
-    mycurl $url | hxmagic 'div.dn' | sed 's/<a data-tracking..*//g'
+    # Without awk filtering, the div.dn magic always returns something, even
+    # when no lyrics were found, usually something from lyricsfreak frontpage.
+    mycurl $url | awk '/<!-- SONG LYRICS -->/, /<!-- \/SONG LYRICS -->/' | \
+        hxmagic 'div.dn' | sed 's/<a data-tracking..*//g'
 }
 
 musixmatch() {
