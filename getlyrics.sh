@@ -291,14 +291,14 @@ lyrics_from_artist_song() {
     artist=$1
     song=$2
     last_website=$(get_last_website)
-    for src_fn in $last_website $LYRICS_WEBSITES; do
-        lyrics=$($src_fn $artist $song )
+    for website in $last_website $LYRICS_WEBSITES; do
+        lyrics=$($website $artist $song ) # call function with website name.
         if [[ ! -z "${lyrics// /}" ]]; then
-            echo $src_fn        # website name
+            echo $website       # first line contains the website name
             break
         fi
     done
-    clean_string $lyrics
+    clean_string $lyrics        # the rest of the string contains the lyrics
 }
 
 # Return error if cmus is not available or it's not playing at the moment.
@@ -495,7 +495,7 @@ main () {
     done
     shift $((OPTIND-1))
 
-    local search_str urls artist song source_and_lyrics lyrics_source
+    local search_str urls artist song website_and_lyrics website
     local lyrics=""
     # db is only used when search string is from file or folder,
     # otherwise the artist and song strings are not reliable
@@ -540,14 +540,14 @@ main () {
         lyrics=$(from_db $artist $song)
         if [[ -z "${lyrics// /}" ]]; then
             # ..or on the web, when the artist and song is known
-            source_and_lyrics=$(lyrics_from_artist_song $artist $song)
-            lyrics_source=$(echo $source_and_lyrics | head -n1)
-            lyrics=$(echo $source_and_lyrics | tail -n+2)
+            website_and_lyrics=$(lyrics_from_artist_song $artist $song)
+            website=$(echo $website_and_lyrics | head -n1)
+            lyrics=$(echo $website_and_lyrics | tail -n+2)
             # Save the lyrics if any were found and make updates.
             if [[ ! -z "${lyrics// /}" ]]; then
                 save_db $artist $song $lyrics
-                stats_add_website $lyrics_source
-                save_last_website $lyrics_source
+                stats_add_website $website
+                save_last_website $website
             fi
         fi
     else
