@@ -287,10 +287,12 @@ lyrics_from_url() {
 # The first line of the returned string is the website name where the
 # lyrics were found and the rest of the string are the lyrics themselves.
 lyrics_from_artist_song() {
-    local artist=$1
-    local song=$2
-    for src_fn in $LYRICS_WEBSITES; do
-        local lyrics=$($src_fn $artist $song )
+    local artist song last_website lyrics
+    artist=$1
+    song=$2
+    last_website=$(get_last_website)
+    for src_fn in $last_website $LYRICS_WEBSITES; do
+        lyrics=$($src_fn $artist $song )
         if [[ ! -z "${lyrics// /}" ]]; then
             echo $src_fn        # website name
             break
@@ -435,6 +437,24 @@ stats_clear() {
 }
 
 
+# Store the last website where lyrics were found. In folder searches,
+# the chances are high that the next search if for the same artist or
+# even album. So why not search on the same website.
+last_website_location() {
+    echo "$HOME/lyrics/.lastwebsite"
+}
+
+save_last_website() {
+    local last_website_file=$(last_website_location)
+    echo $1 > $last_website_file
+}
+
+get_last_website() {
+    local last_website_file=$(last_website_location)
+    cat $last_website_file
+}
+
+
 main () {
     local extra_str="lyrics"
     local only_save="false"
@@ -523,10 +543,11 @@ main () {
             source_and_lyrics=$(lyrics_from_artist_song $artist $song)
             lyrics_source=$(echo $source_and_lyrics | head -n1)
             lyrics=$(echo $source_and_lyrics | tail -n+2)
-            # Save the lyrics if any were found.
+            # Save the lyrics if any were found and make updates.
             if [[ ! -z "${lyrics// /}" ]]; then
                 save_db $artist $song $lyrics
                 stats_add_website $lyrics_source
+                save_last_website $lyrics_source
             fi
         fi
     else
