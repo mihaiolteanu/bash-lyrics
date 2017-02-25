@@ -1,5 +1,13 @@
 #!/usr/bin/env zsh
 
+all_lyrics_websites="metrolyrics songlyrics darklyrics makeitpersonal genius \
+                     azlyrics lyricsfreak musixmatch songtexte versuri"
+# If lyrics envvar is not exported by user, consider all the sources,
+# otherwise split the envvar string into an array. The -w option, if
+# specified, makes both both these assignments obsolete.
+: ${(A)LYRICS_WEBSITES:=${=all_lyrics_websites}}
+: ${(A)LYRICS_WEBSITES::=${=LYRICS_WEBSITES}}
+
 help_str="$0 - All the lyrics in one place
 
 Usage: $0 [-efdlrwsh] [string file folder]
@@ -287,10 +295,7 @@ lyrics_from_url() {
 lyrics_from_artist_song() {
     local artist=$1
     local song=$2
-    # local sources=(makeitpersonal songlyrics metrolyrics genius azlyrics
-    #                lyricsfreak songmeanings musixmatch metalkingdom
-    #                songtexte versuri)
-    local sources=(makeitpersonal)
+    local sources=$LYRICS_WEBSITES
     for src_fn in $sources; do
         local lyrics=$($src_fn $artist $song )
         if [[ ! -z "${lyrics// /}" ]]; then
@@ -413,7 +418,7 @@ main () {
     local extra_str="lyrics"
     local only_urls="false"
     local only_save="false"
-    while getopts ":e:lrwsh" opt; do
+    while getopts ":e:lrw:Wsh" opt; do
         case $opt in
             e)
                 extra_str=$OPTARG
@@ -425,7 +430,10 @@ main () {
                 clean_tokens=()
                 ;;
             w)
-                echo $supported_websites
+                : ${LYRICS_WEBSITES::=$OPTARG}
+                ;;
+            W)
+                echo ${(F)LYRICS_WEBSITES}
                 exit 0
                 ;;
             s)
