@@ -13,9 +13,9 @@ help_str="$0 - All the lyrics in one place
 Usage: $0 [-efdlrwsh] [string file folder]
 
        Search and save song lyrics using one of the sources:
-       string - A string containing artist name, song name, part of the searched 
-                lyrics or any combination of the above. This is the only option
-                that does *not* save the lyrics for later retrieval.
+       string - A free-form string containing artist name, song name, part of
+                the searched lyrics or any combination of the above. This is
+                the only option that does *not* save the lyrics for later retrieval.
        file   - A media file containing artist/song title info (mp3 supported)
        folder - A folder containing media file(s).
               - With no source given, get the info from the media player, if 
@@ -23,38 +23,24 @@ Usage: $0 [-efdlrwsh] [string file folder]
 
 Options:
     -e <str> Replace the \"lyrics\" string that is appended by default to the
-       search string. This can help increase the chance of finding the lyrics.
-
-    -f <file> Extract the search string from a media file. If lyrics are found, 
-       save them to a local database. If the lyrics are already in the database,
-       return those instead.
-
-    -d <folder> Similar to -f, but for all the media files in that folder, 
-       recursively. This implies the -s option as well.
-
-    -l Only list the candidate urls, but do not extract the lyrics from any of them.
+       search string. This can help increase the chance of finding the lyrics. Only
+       has an effect for free-form searches
 
     -r Raw mode. Do not remove tokens like \"live\", \"acoustic version\", etc.
-       from the search string. These tokens are removed by default from the
-       search_string to increase the chance of finding the lyrics.
+       from the song titles. These tokens are removed by default from the
+       song titles to increase the chance of finding the lyrics.
 
-    -w List the websites from which the application can extract the lyrics.
+    -w <str1 str2 ...> Manually select the order and the name of the websites used
+       to extract the lyrics from. Alternatively, the LYRICS_WEBSITES
+       variable can be exported. (Example: $0 -w \"metrolyrics azlyrics\")
+
+    -W List all the websites from which the application can extract the lyrics.
 
     -s Only save the lyrics but do not print them to stdout. If the lyrics already
-       exist in the database, do nothing.
+       exist in the database, do nothing. Enabled by default when the source is
+       a folder.
 
     -h Print this help and exit"
-
-supported_websites="www.songlyrics.com
-www.metrolyrics.com
-www.genius.com
-www.azlyrics.com
-www.lyricsfreak.com
-www.songmeanings.com
-www.musixmatch.com
-www.metalkingdom.net
-www.songtexte.com (german)
-www.versuri.ro (romanian)"
 
 mycurl() {
     local url=$1
@@ -67,8 +53,7 @@ mycurl() {
 clean_string() {
     local dirty=$1
     # Remove all tags, leading/trailing spaces and duplicate empty lines.
-    echo $dirty | sed -e 's/<[^>]*>//g' | \
-        sed 's/^ *//; s/ *$//' | cat -s
+    echo $dirty | sed -e 's/<[^>]*>//g' | sed 's/^ *//; s/ *$//' | cat -s
 }
 
 rm_extra_spaces() {
@@ -486,20 +471,22 @@ main () {
     artist=$(clean_search_item $artist)
     song=$(clean_search_item $song)
 
-    # If lyrics not found in the db, save them, otherwise, copy them.
+    # Actually search the lyrics
     if [[ $reliable_src =~ "true" ]]; then
+        # In the lyrics database..
         lyrics=$(from_db $artist $song)
         if [[ -z "${lyrics// /}" ]]; then
+            # ..or on the web, when the artist and song is known
             lyrics=$(lyrics_from_artist_song $artist $song)
-            # Save lyrics to db, if available and needed.
+            # Save the lyrics if any were found.
             if [[ ! -z "${lyrics// /}" ]]; then
                 save_db $artist $song $lyrics
             fi
         fi
     else
-        # Only use a search engine for unreliable sources (artist and/or
-        # song name are not necessarly known or cannot be split apart from
-        # one another). The source in this case is usually a cli string.
+        # For the free-form strings, use a search engine, as the artist and
+        # song name are not necessarly known or cannot be 100% infered in
+        # this case. Also, no saving in this case.
 
         # Use a search engine to get candidate urls.
         urls=(${(@f)$(search_for_urls $search_str $extra_str)})
