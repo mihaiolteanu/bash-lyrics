@@ -44,6 +44,8 @@ Options:
 
     -G Clear websites usage statistics.
 
+    -l Display the website where the last lyrics were found.
+
     -h Print this help and exit"
 
 # Extract the contents of any html tag. Pure magic!
@@ -458,7 +460,7 @@ get_last_website() {
 main () {
     local extra_str="lyrics"
     local only_save="false"
-    while getopts ":e:lrw:WsgGh" opt; do
+    while getopts ":e:rw:WsgGlh" opt; do
         case $opt in
             e)
                 extra_str=$OPTARG
@@ -481,6 +483,10 @@ main () {
                 exit 0
                 ;;
             G)  stats_clear
+                exit 0
+                ;;
+            l)
+                get_last_website
                 exit 0
                 ;;
             \?)
