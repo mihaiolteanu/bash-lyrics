@@ -40,6 +40,10 @@ Options:
        exist in the database, do nothing. Enabled by default when the source is
        a folder.
 
+    -g Display websites usage statistics.
+
+    -G Clear websites usage statistics.
+
     -h Print this help and exit"
 
 # Extract the contents of any html tag. Pure magic!
@@ -280,13 +284,15 @@ lyrics_from_url() {
     clean_string $lyrics
 }
 
+# The first line of the returned string is the website name where the
+# lyrics were found and the rest of the string are the lyrics themselves.
 lyrics_from_artist_song() {
     local artist=$1
     local song=$2
-    local sources=$LYRICS_WEBSITES
-    for src_fn in $sources; do
+    for src_fn in $LYRICS_WEBSITES; do
         local lyrics=$($src_fn $artist $song )
         if [[ ! -z "${lyrics// /}" ]]; then
+            echo $src_fn        # website name
             break
         fi
     done
@@ -402,10 +408,37 @@ from_db() {
 }
 
 
+# Collect info regarding the most-used lyrics websites.
+stats_location() {
+    echo "$HOME/lyrics/.stats"
+}
+
+stats_add_website() {
+    local website pattern stats_file
+    website=$1
+    stats_file=$(stats_location)
+    # Increment the website count or add it if it doesn't exist.
+    pattern="/%s/{\$1+=1; found=1}1{print} END{if(found!=1) print \"1 %s\"}"
+    pattern=$(printf $pattern $website $website)
+    awk $pattern $stats_file > /tmp/lyrics_stats && \
+        mv /tmp/lyrics_stats $stats_file
+}
+
+stats_display() {
+    local stats_file=$(stats_location)
+    cat $stats_file
+}
+
+stats_clear() {
+    local stats_file=$(stats_location)
+    echo -n "" > $stats_file
+}
+
+
 main () {
     local extra_str="lyrics"
     local only_save="false"
-    while getopts ":e:lrw:Wsh" opt; do
+    while getopts ":e:lrw:WsgGh" opt; do
         case $opt in
             e)
                 extra_str=$OPTARG
@@ -423,6 +456,13 @@ main () {
             s)
                 only_save="true"
                 ;;
+            g)
+                stats_display
+                exit 0
+                ;;
+            G)  stats_clear
+                exit 0
+                ;;
             \?)
                 echo $help_str
                 exit 1
@@ -435,7 +475,7 @@ main () {
     done
     shift $((OPTIND-1))
 
-    local search_str urls artist song
+    local search_str urls artist song source_and_lyrics lyrics_source
     local lyrics=""
     # db is only used when search string is from file or folder,
     # otherwise the artist and song strings are not reliable
@@ -480,10 +520,13 @@ main () {
         lyrics=$(from_db $artist $song)
         if [[ -z "${lyrics// /}" ]]; then
             # ..or on the web, when the artist and song is known
-            lyrics=$(lyrics_from_artist_song $artist $song)
+            source_and_lyrics=$(lyrics_from_artist_song $artist $song)
+            lyrics_source=$(echo $source_and_lyrics | head -n1)
+            lyrics=$(echo $source_and_lyrics | tail -n+2)
             # Save the lyrics if any were found.
             if [[ ! -z "${lyrics// /}" ]]; then
                 save_db $artist $song $lyrics
+                stats_add_website $lyrics_source
             fi
         fi
     else
