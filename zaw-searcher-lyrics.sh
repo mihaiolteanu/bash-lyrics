@@ -13,8 +13,23 @@ function zaw-lyrics-src-searcher() {
     if [[ $? != 0 ]]; then
         return 1
     fi
-    buf=$(echo $buf | awk 'BEGIN{FS=":"}{print $1, $3}' | \
-              awk 'BEGIN{FS="/"}{print $(NF-1), $NF}')
+
+    # Make things look pretier.
+    buf=$(echo $buf | \
+          sed -r 's/:[0-9]+:/|/' | \
+          awk -F/ 'BEGIN{OFS="|"}{print $(NF-1), $NF}' | \
+          awk '{gsub("-", " "); print $0}' | \
+          # Output three columns of fixed length, including
+          # artist, song and actual lyrics where the length2 is
+          # determined at runtime from the longest strings
+          awk -F\| '
+            { if (length($1) > artist_len) artist_len=length($1)
+            if (length($2) > song_len) song_len=length($2)
+            if (length($3) > lyrics_len) lyrics_len=length($3)
+            a[NR][1]=$1; a[NR][2]=$2; a[NR][3]=$3 }
+            END {
+            patt=sprintf("%%-%ds | %%-%ds | %%-%ds\n", artist_len+1, song_len+1, lyrics_len+1)
+            for(i=1; i<=NR; i++) printf(patt, a[i][1], a[i][2], a[i][3])}')
     : ${(A)candidates::=${(f)buf}}
     : ${(A)cand_descriptions::=${(f)buf}}
     actions=(\
@@ -40,6 +55,11 @@ function zaw-muse-artist-search() {
     #zaw-lyrics-src-searcher
 }
 
+rm_extra_spaces() {
+    echo $1 | sed 's/^[[:space:]]*//; s/[[:space:]] *$//;
+                   s/[[:space:]][[:space:]]*/ /g'
+}
+
 function zaw-muse-artist-search-lastfm() {
     local pattern="www.last.fm/music/%s"
     local artist=${1//-/+}
@@ -47,27 +67,23 @@ function zaw-muse-artist-search-lastfm() {
 }
 
 function zaw-lyrics-src-searcher-play () {
-    local filename=${1%%:*}
-    local array=(${(s:/:)filename})
-    local title=$array[-1]
-    local artist=$array[-2]
-    local command=$(printf "/%s %s" ${artist//-/ } ${title//-/ })
-    echo "\n" $artist "-" $title "\n"
-    cat $filename
+    local array=(${(s:|:)1})
+    local artist=$(rm_extra_spaces $array[1])
+    local song=$(rm_extra_spaces $array[2])
+    local command=$(printf "/%s %s" $artist $song)
     cmus-remote -C $command
     cmus-remote -C "win-activate"
-    #zle accept-line
+    zle accept-line
 }
 
 function zaw-lyrics-src-searcher-youtube() {
-    local filename=${1%%:*}
-    local array=(${(s:/:)filename})
-    local title=$array[-1]
-    local artist=$array[-2]
-    title=${title//-/+}    # Ducky likes pluses
-    artist=${artist//-/+}
+    local array=(${(s:|:)1})
+    local artist=$(rm_extra_spaces $array[1])
+    local song=$(rm_extra_spaces $array[2])
+    artist=${artist// /+}
+    song=${song// /+}    # Ducky likes pluses
     local template="https://duckduckgo.com/?q=!ducky+%s+%s+site"
-    local command=$(printf $template $artist $title)
+    local command=$(printf $template $artist $song)
     firefox $command"%3Ayoutube.com"
 }
 
