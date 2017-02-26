@@ -23,6 +23,8 @@ Usage: $SELF [-efdlrwsh] [string file folder]
                 supported and running (cmus and moc supported).
 
 Options:
+    -d <folder> Run in daemon mode. Monitor the given folder for new media files
+       and update the database with the lyrics, if found.
     -e <str> Replace the \"lyrics\" string that is appended by default to the
        search string. This can help increase the chance of finding the lyrics. Only
        has an effect for free-form searches
@@ -458,11 +460,30 @@ get_last_website() {
 }
 
 
+monitor_folder() {
+    local folder=$1
+    inotifywait -m -r -e create -e move --format '%w%f' "${folder}" | \
+        while read newfile
+    do
+        if [[ -d $newfile ]]; then   # folder
+            for file in $newfile/**/*.mp3; do
+                $SELF $file
+            done
+        else                         # single file
+            $SELF -s $newfile
+        fi
+    done
+}
+
+
 main () {
     local extra_str="lyrics"
     local only_save="false"
-    while getopts ":e:rw:WsgGlh" opt; do
+    while getopts ":d:e:rw:WsgGlh" opt; do
         case $opt in
+            d)
+                monitor_folder $OPTARG
+                ;;
             e)
                 extra_str=$OPTARG
                 ;;
