@@ -8,9 +8,10 @@ all_lyrics_websites="metrolyrics songlyrics darklyrics makeitpersonal genius \
 : ${(A)LYRICS_WEBSITES:=${=all_lyrics_websites}}
 : ${(A)LYRICS_WEBSITES::=${=LYRICS_WEBSITES}}
 
-help_str="$0 - All the lyrics in one place
+SELF=$(basename "$0")
+help_str="$SELF - All the lyrics in one place
 
-Usage: $0 [-efdlrwsh] [string file folder]
+Usage: $SELF [-efdlrwsh] [string file folder]
 
        Search and save song lyrics using one of the sources:
        string - A free-form string containing artist name, song name, part of
@@ -32,7 +33,7 @@ Options:
 
     -w <str1 str2 ...> Manually select the order and the name of the websites used
        to extract the lyrics from. Alternatively, the LYRICS_WEBSITES
-       variable can be exported. (Example: $0 -w \"metrolyrics azlyrics\")
+       variable can be exported. (Example: $SELF -w \"metrolyrics azlyrics\")
 
     -W List all the websites from which the application can extract the lyrics.
 
