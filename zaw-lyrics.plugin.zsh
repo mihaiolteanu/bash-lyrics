@@ -2,7 +2,7 @@
 
 autoload -U read-from-minibuffer
 
-function zaw-lyrics-src-searcher() {
+function zaw-lyrics-src-search() {
     local buf
     read-from-minibuffer "lyrics: "
     if [[ -z "${REPLY// }" ]]; then
@@ -33,8 +33,8 @@ function zaw-lyrics-src-searcher() {
     : ${(A)candidates::=${(f)buf}}
     : ${(A)cand_descriptions::=${(f)buf}}
     actions=(\
-             zaw-lyrics-src-searcher-play \
-             zaw-lyrics-src-searcher-youtube \
+             zaw-lyrics-play-player \
+             zaw-lyrics-play-youtube \
         )
     act_descriptions=(\
                       "Cat" \
@@ -42,17 +42,14 @@ function zaw-lyrics-src-searcher() {
         )
 }
 
-function zaw-muse-artist-search() {
-    #candidates=(${(@f)$(ls ~/lyrics)})
+function zaw-lyrics-src-artist-search() {
     : ${(A)candidates::=${(@f)$(ls ~/lyrics)}}
-    #candidates=("\033[35m one" "two" "three")
     actions=(\
-             zaw-muse-artist-search-lastfm \
+             zaw-lyrics-artist-lastfm \
         )
     act_descriptions=(\
             "Open artist in last.fm" \
         )
-    #zaw-lyrics-src-searcher
 }
 
 rm_extra_spaces() {
@@ -60,13 +57,13 @@ rm_extra_spaces() {
                    s/[[:space:]][[:space:]]*/ /g'
 }
 
-function zaw-muse-artist-search-lastfm() {
+function zaw-lyrics-artist-lastfm() {
     local pattern="www.last.fm/music/%s"
     local artist=${1//-/+}
     firefox $(printf $pattern $artist)
 }
 
-function zaw-lyrics-src-searcher-play () {
+function zaw-lyrics-play-player () {
     local array=(${(s:|:)1})
     local artist=$(rm_extra_spaces $array[1])
     local song=$(rm_extra_spaces $array[2])
@@ -76,7 +73,7 @@ function zaw-lyrics-src-searcher-play () {
     zle accept-line
 }
 
-function zaw-lyrics-src-searcher-youtube() {
+function zaw-lyrics-play-youtube() {
     local array=(${(s:|:)1})
     local artist=$(rm_extra_spaces $array[1])
     local song=$(rm_extra_spaces $array[2])
@@ -87,5 +84,5 @@ function zaw-lyrics-src-searcher-youtube() {
     firefox $command"%3Ayoutube.com"
 }
 
-zaw-register-src -n lyrics-searcher zaw-lyrics-src-searcher
-zaw-register-src -n artist-search zaw-muse-artist-search
+zaw-register-src -n lyrics-search zaw-lyrics-src-search
+zaw-register-src -n artist-search zaw-lyrics-src-artist-search
