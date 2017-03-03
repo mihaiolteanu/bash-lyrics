@@ -99,7 +99,8 @@ makeitpersonal() {
     lyrics=$(curl -s $url)
     error_str=("Sorry, We don't have lyrics for this song yet" \
                "title is empty" \
-               "artist is empty")
+               "artist is empty" \
+               "Something went wrong") # usually went wrong formatted url
     if [[ $error_str =~ $lyrics ]]; then
         lyrics=""
     fi
@@ -491,7 +492,7 @@ main () {
                 clean_tokens=()
                 ;;
             w)
-                : ${LYRICS_WEBSITES::=$OPTARG}
+                : ${(A)LYRICS_WEBSITES::=${=OPTARG}}
                 ;;
             W)
                 echo ${(F)LYRICS_WEBSITES}
