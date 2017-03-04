@@ -545,7 +545,7 @@ main () {
     elif [[ $# -eq 1 ]]; then
         if [[ -d $1 ]]; then    # from folder
             for media_file in $1/**/*.mp3; do
-                ($0 -s $media_file)  # Call self. Saving to db is taken care of.
+                $SELF -s -w $LYRICS_WEBSITES $media_file
             done
             exit 0
         elif [[ -a $1 ]]; then  # from file
