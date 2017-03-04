@@ -542,7 +542,8 @@ main () {
     done
     shift $((OPTIND-1))
 
-    local search_str urls artist song raw_song website_and_lyrics website
+    local search_str urls artist raw_artist song raw_song
+    local website_and_lyrics website
     local lyrics=""
     # db is only used when search string is from file or folder,
     # otherwise the artist and song strings are not reliable
@@ -578,8 +579,8 @@ main () {
         exit 1
     fi
 
-    raw_song=$song              # remember the original value, some
-                                # parsers need it for searching
+    raw_artist=$artist
+    raw_song=$song
     artist=$(clean_search_item $artist)
     song=$(clean_search_item $song)
 
@@ -618,6 +619,7 @@ main () {
 
     # Return the lyrics to stdout, if needed.
     if [[ $only_save =~ "false" ]]; then
+        echo "$raw_artist - $raw_song\n"
         echo -n $lyrics
     fi
 
