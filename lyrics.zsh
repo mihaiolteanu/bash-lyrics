@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 all_lyrics_websites="metrolyrics songlyrics darklyrics makeitpersonal genius \
-                     azlyrics lyricsfreak musixmatch songtexte versuri"
+                     azlyrics flashlyrics lyricsfreak musixmatch songtexte versuri"
 # If lyrics envvar is not exported by user, consider all the sources,
 # otherwise split the envvar string into an array. The -w option, if
 # specified, makes both both these assignments obsolete.
@@ -161,6 +161,24 @@ azlyrics() {
         url=$(printf $template $artist $title)
     fi
     mycurl $url | awk '/Usage of azlyrics.com/{f=1; next}/<!--/{f=0}f==1'
+}
+
+flashlyrics() {
+    local artist title raw_title url
+    local suburl artist_template template
+    if [[ $1 =~ "http" ]]; then
+        url=$1
+    else
+        artist=${1// /-}
+        title=${2// /-}
+        raw_title=$3
+        artist_template="https://www.flashlyrics.com/lyrics/%s"
+        url=$(printf $artist_template $artist)
+        url=$(curl -s $url | grep "href..*$raw_title" | hxwls | head -n1)
+    fi
+    mycurl $url 2>/dev/null | hxnormalize -x | \
+        awk '/main-panel-content/, /sharebar-wrapper/' | \
+        sed 's/main-panel-banner/exclude/' | hxprune
 }
 
 lyricsfreak() {
