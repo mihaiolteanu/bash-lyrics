@@ -171,7 +171,7 @@ lyricsfreak() {
     else
         artist=${1// /+}
         title=${2// /+}
-        raw_title=$2
+        raw_title=$3
         artist_template="http://www.lyricsfreak.com/%s/%s/"
         lyrics_template="http://www.lyricsfreak.com/%s"
         url=$(printf $artist_template ${artist:0:1} $artist)
@@ -206,7 +206,7 @@ darklyrics() {
     else
         artist=${1// /}
         title=${2// /}
-        raw_title=$2
+        raw_title=$3
         albums_template="http://www.darklyrics.com/%s/%s.html"
         lyrics_template="http://www.darklyrics.com/lyrics/%s/%s.html"
         url=$(printf $albums_template ${artist:0:1} $artist)
@@ -252,7 +252,7 @@ versuri() {
         artist=${1// /+}
         title=${2// /+}
         raw_artist=$1
-        raw_title=$2
+        raw_title=$3
         main_template="http://www.versuri.ro/cat/%s.html"
         artist_template="http://www.versuri.ro%s"
         lyrics_template="http://www.versuri.ro%s"
@@ -292,12 +292,13 @@ lyrics_from_url() {
 # The first line of the returned string is the website name where the
 # lyrics were found and the rest of the string are the lyrics themselves.
 lyrics_from_artist_song() {
-    local artist song last_website lyrics
+    local artist song raw_song last_website lyrics
     artist=$1
     song=$2
+    raw_song=$3
     last_website=$(get_last_website)
     for website in $last_website $LYRICS_WEBSITES; do
-        lyrics=$($website $artist $song ) # call function with website name.
+        lyrics=$($website $artist $song $raw_song) # call function with website name.
         if [[ ! -z "${lyrics// /}" ]]; then
             echo $website       # first line contains the website name
             break
@@ -523,7 +524,7 @@ main () {
     done
     shift $((OPTIND-1))
 
-    local search_str urls artist song website_and_lyrics website
+    local search_str urls artist song raw_song website_and_lyrics website
     local lyrics=""
     # db is only used when search string is from file or folder,
     # otherwise the artist and song strings are not reliable
@@ -559,6 +560,8 @@ main () {
         exit 1
     fi
 
+    raw_song=$song              # remember the original value, some
+                                # parsers need it for searching
     artist=$(clean_search_item $artist)
     song=$(clean_search_item $song)
 
@@ -568,7 +571,7 @@ main () {
         lyrics=$(from_db $artist $song)
         if [[ -z "${lyrics// /}" ]]; then
             # ..or on the web, when the artist and song is known
-            website_and_lyrics=$(lyrics_from_artist_song $artist $song)
+            website_and_lyrics=$(lyrics_from_artist_song $artist $song $raw_song)
             website=$(echo $website_and_lyrics | head -n1)
             lyrics=$(echo $website_and_lyrics | tail -n+2)
             # Save the lyrics if any were found and make updates.
