@@ -87,7 +87,7 @@ clean_search_item() {
 }
 
 makeitpersonal() {
-    local artist title lyrics url template error_str
+    local artist title lyrics url template err_strings
     if [[ $1 =~ "http" ]]; then
         url=$1
     else
@@ -97,13 +97,15 @@ makeitpersonal() {
         url=$(printf $template $artist $title)
     fi
     lyrics=$(curl -s $url)
-    error_str=("Sorry, We don't have lyrics for this song yet" \
-               "title is empty" \
-               "artist is empty" \
-               "Something went wrong") # usually went wrong formatted url
-    if [[ $error_str =~ $lyrics ]]; then
-        lyrics=""
-    fi
+    err_strings=("Sorry, We don't have lyrics for this song yet" \
+                 "title is empty" \
+                 "artist is empty" \
+                 "Something went wrong")
+    for err_str in $err_strings; do
+        if [[ $lyrics =~ ".*$err_str.*" ]]; then
+            lyrics=""
+        fi
+    done
     echo -n $lyrics
 }
 
