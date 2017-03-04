@@ -77,8 +77,8 @@ rm_extra_spaces() {
 clean_search_item() {
     local cleanup_tokens=(demo live acoustic remix bonus)
     local item=$1
+    item=${item//[.,?!\/]/}          # remove special chars
     item=$(rm_extra_spaces $item)    # no extra spaces
-    item=${item//[.,?!]/}            # remove special chars
     item=${item:l}                   # lowercase
     for token in $cleanup_tokens; do # remove tokens
         item=$(echo $item | sed "s/ *( *$token.*) *//")
