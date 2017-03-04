@@ -32,6 +32,7 @@ function zaw-lyrics-src-search() {
             for(i=1; i<=NR; i++) printf(patt, a[i][1], a[i][2], a[i][3])}')
     : ${(A)candidates::=${(f)buf}}
     : ${(A)cand_descriptions::=${(f)buf}}
+    : ${(A)cand_descriptions::=${(u)cand_descriptions[@]}} # unique entries only
     actions=(\
              zaw-lyrics-play-player \
              zaw-lyrics-play-youtube \
