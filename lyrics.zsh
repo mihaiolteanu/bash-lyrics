@@ -108,7 +108,7 @@ makeitpersonal() {
 }
 
 songlyrics() {
-    local artist title lyrics url template
+    local artist title lyrics url template err_strings
     if [[ $1 =~ "http" ]]; then
         url=$1
     else
@@ -118,9 +118,13 @@ songlyrics() {
         url=$(printf $template $artist $title)
     fi
     lyrics=$(curl -s $url | hxmagic 'p.songLyricsV14')
-    if [[ $lyrics =~ "Sorry, we have no" ]]; then
-        lyrics=""
-    fi
+    err_strings=("Sorry, we have no" \
+                 "We do not have the lyrics for")
+    for err_str in $err_strings; do
+        if [[ $lyrics =~ ".*$err_str.*" ]]; then
+            lyrics=""
+        fi
+    done
     echo -n $lyrics
 }
 
