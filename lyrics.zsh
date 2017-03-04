@@ -223,18 +223,17 @@ darklyrics() {
 }
 
 songtexte() {
-    local artist title raw_title lyrics url
+    local artist title lyrics url
     local search_template lyrics_template suburl
     if [[ $1 =~ "http" ]]; then
         url=$1
     else
         artist=${1// /-}
         title=${2// /-}
-        raw_title=$2
         search_template="http://www.songtexte.com/search?q=%s+%s&c=all"
         lyrics_template="http://www.songtexte.com/%s"
         url=$(printf $search_template $artist $title)
-        suburl=$(curl -s $url | grep -i "<span>$raw_title<\/span>" | hxwls | head -n1)
+        suburl=$(curl -s $url | grep -i "$title..*html" | hxwls | head -n1)
         url=$(printf $lyrics_template $suburl)
     fi 
     lyrics=$(curl -s $url | sed 's/div id/div class/g' | hxmagic 'div.lyrics')
